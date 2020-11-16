@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExportToHTMLSettings">
+    <option name="OUTPUT_DIRECTORY" value="$PROJECT_DIR$/../PolygoveEngine\exportToHTML" />
+  </component>
+  <component name="ProjectId" id="1WnnDfgydZA1nrLSjMphXMhZ533" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="" />
+      <created>1579794107605</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1579794107605</updated>
+      <workItem from="1579794108969" duration="429000" />
+      <workItem from="1579877858845" duration="1111000" />
+      <workItem from="1580136852192" duration="88000" />
+      <workItem from="1580136986100" duration="805000" />
+      <workItem from="1580685676894" duration="19000" />
+      <workItem from="1580764996290" duration="239000" />
+      <workItem from="1581795729051" duration="8000" />
+      <workItem from="1582568290678" duration="910000" />
+      <workItem from="1583024080468" duration="10000" />
+      <workItem from="1599427693513" duration="70000" />
+      <workItem from="1604344289051" duration="1257000" />
+      <workItem from="1604345893713" duration="17591000" />
+      <workItem from="1605129124231" duration="23762000" />
+      <workItem from="1605551953070" duration="1644000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="421" y="96" key="FileChooserDialogImpl" timestamp="1599427762457">
+      <screen x="0" y="0" width="1280" height="680" />
+    </state>
+    <state x="421" y="96" key="FileChooserDialogImpl/0.0.1280.680@0.0.1280.680" timestamp="1599427762457" />
+    <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1605501733834">
+      <screen x="0" y="0" width="1280" height="680" />
+    </state>
+    <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/0.0.1280.680@0.0.1280.680" timestamp="1605501733834" />
+  </component>
+</project>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Testing polygove</title>
+ 
+	<script id="vshader" type="x-shader/x-vertex">
+	
+	attribute vec4 vPosition;
+    uniform mat4 modelViewMatrix;
+    uniform mat4 projectionMatrix;
+    attribute vec4 vColor;
+    varying vec4 fColor;
+
+    attribute vec4 vNormal;
+    uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+    uniform vec4 lightPosition;
+    uniform float shininess;
+    uniform float cutoffThreshold;
+
+	void main() {
+
+		vec3 pos = (modelViewMatrix * vPosition).xyz;
+        vec3 L = normalize(lightPosition.xyz - pos);
+
+        vec3 N = normalize(modelViewMatrix * vNormal).xyz;
+
+        vec3 V = normalize(-pos);
+        vec3 R = (2.0 * dot(L, N) * N) - L;
+
+        vec4 diffuse = vec4(0.0, 0.0, 0.0, 0.0);
+        vec4 specular = vec4(0.0, 0.0, 0.0, 0.0);
+        vec4 ambient = ambientProduct;
+
+        vec3 lightDir = normalize(vec3(0, 0, -1));
+
+        if(dot(L, -lightDir) > cutoffThreshold ) {
+        diffuse = diffuseProduct * dot(L, N);
+        specular = specularProduct * pow(max(dot(V, R), 0.0), shininess);
+        }
+
+        vec4 lColor = diffuse + specular + ambient;
+        lColor.a = 1.0;
+
+		gl_Position = projectionMatrix * modelViewMatrix * vPosition;	// Point position
+
+  		gl_PointSize = 10.0;		// Point size
+
+  		fColor = lColor * vColor;
+  	}
+	</script>
+	
+	<script id="fshader" type="x-shader/x-fragment">
+	precision mediump float;
+	varying vec4 fColor;
+	void main() 
+	{
+		gl_FragColor = fColor;
+  	}
+	</script>
+	
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/initShaders.js"></script>
+    <script src="lib/MV.js"></script>
+    
+    <script src="polygove.js"></script>
+
+  </head>
+ 
+  <body onload="main()">
+  
+    <canvas id="webgl" width="400" height="400">
+    	Please use a browser that supports the "canvas" tag.
+    </canvas>
+
+  </body>
+</html>
