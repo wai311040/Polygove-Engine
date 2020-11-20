@@ -265,8 +265,8 @@ class WorldManager extends Manager {
                 moved = this.moveObject(p_o, new_pos);
             }
 
-            //If GameObject moved or should rotate, then update its model.
-            if(moved == 0 || p_o.getRotateSpeed() != 0) {
+            //If GameObject moved then update its model.
+            if(moved == 0) {
                 p_o.updateModel();
             }
         }
@@ -295,9 +295,14 @@ class WorldManager extends Manager {
 
     // Draw all objects.
     draw() {
-        //iterate through all objects
-        for (var i = 0; i < this.m_updates.length; i++) {
-            this.m_updates[i].draw();
+        if(this.m_updates.length > 0) {
+            //iterate through all objects
+            for (var i = 0; i < this.m_updates.length; i++) {
+                this.m_updates[i].draw();
+            }
+        }
+        else {
+            renderClear();
         }
     }
 
@@ -319,8 +324,8 @@ class WorldManager extends Manager {
                 // bounding box of other object
                 var b_temp = p_temp_o.getBox();
 
-                // Same location and p_temp_o solid?
-                if (utility.boxIntersectBox(b, b_temp) && p_temp_o.isSolid())
+                // collision occur and p_temp_o solid?
+                if (utility.boxCollideBox(b, b_temp) == 0 && p_temp_o.isSolid())
                     collision_list.push(p_temp_o);
             }
         }
@@ -344,8 +349,8 @@ class WorldManager extends Manager {
                 var do_move = true;  // Assume can move.
 
                 // Iterate over list.
-                for (var i = 0; i < this.m_updates.length; i++) {
-                    var p_temp_o = this.m_updates[i];
+                for (var i = 0; i < list.length; i++) {
+                    var p_temp_o = list[i];
 
                     // Create collision event.
                     var c = new EventCollision(p_o, p_temp_o, where);
@@ -690,12 +695,10 @@ class GameObject {
     updateModel() {
         var new_angle = this.m_model.getRotateAngle() + this.m_rotateSpeed;
         var new_pos = vec3(this.m_position.getX(), this.m_position.getY(), this.m_position.getZ());
-        var new_box = this.m_model.getBox();
-        new_box.setCenter(new_pos);
 
         this.m_model.setRotateAngle(new_angle);
         this.m_model.setTranslate(new_pos);
-        this.m_model.setBox(new_box);
+        this.m_model.updateBox();
     }
 
     // Set Object's bounding box.
@@ -1080,6 +1083,14 @@ class Model {
     getBox()  {
         return this.m_box;
     }
+
+    updateBox() {
+        this.m_box.setCenter(this.m_translate);
+        this.m_box.setWidth(this.m_scale[0]);
+        this.m_box.setHeight(this.m_scale[1]);
+        this.m_box.setDepth(this.m_scale[2]);
+        this.m_box.rotateBox(this.m_rotateAngle,this.m_rotateAxis);
+    }
 }
 
 class Box {
@@ -1156,6 +1167,24 @@ class Box {
     getDepth() {
         return this.m_depth;
     }
+
+    rotateBox(angle, axis) {
+        var new_normal_x = this.rotateNormal(this.m_normal_x, angle, axis);
+        var new_normal_y = this.rotateNormal(this.m_normal_y, angle, axis);
+        var new_normal_z = this.rotateNormal(this.m_normal_z, angle, axis);
+
+        this.m_normal_x = new_normal_x;
+        this.m_normal_y = new_normal_y;
+        this.m_normal_z = new_normal_z;
+    }
+
+    rotateNormal(normal,angle, axis) {
+        var rot = rotate(angle,axis);
+        var mat_normal = transpose(mat4(normal,1));
+        var mat_rotate = mult(rot,mat_normal);
+        var new_normal = vec3(transpose(mat_rotate)[0]);
+        return new_normal;
+    }
 }
 
 class utility {
@@ -1166,7 +1195,8 @@ class utility {
         });
     }
 
-    static boxIntersectBox(box1, box2) {
+    //return 0 if collision occur
+    static boxCollideBox(box1, box2) {
         var pA = box1.getCenter();
         var Ax = box1.getNormalX();
         var Ay = box1.getNormalY();
@@ -1195,7 +1225,7 @@ class utility {
             + magnitude(mult(R[0][0],wB))
             + magnitude(mult(R[0][1],hB))
             + magnitude(mult(R[0][2],dB))) {
-            return false;
+            return 1;
         }
 
         //  case 2 : L = Ay
@@ -1205,7 +1235,7 @@ class utility {
             + magnitude(mult(R[1][0],wB))
             + magnitude(mult(R[1][1],hB))
             + magnitude(mult(R[1][2],dB))) {
-            return false;
+            return 2;
         }
 
         //  case 3 : L = Az
@@ -1215,7 +1245,7 @@ class utility {
             + magnitude(mult(R[2][0],wB))
             + magnitude(mult(R[2][1],hB))
             + magnitude(mult(R[2][2],dB))) {
-            return false;
+            return 3;
         }
 
         //  case 4 : L = Bx
@@ -1225,7 +1255,7 @@ class utility {
             + magnitude(mult(R[1][0],hA))
             + magnitude(mult(R[2][0],dA))
             + wB) {
-            return false;
+            return 4;
         }
 
         //  case 5 : L = By
@@ -1235,7 +1265,7 @@ class utility {
             + magnitude(mult(R[1][1],hA))
             + magnitude(mult(R[2][1],dA))
             + hB) {
-            return false;
+            return 5;
         }
 
         //  case 6 : L = Bz
@@ -1245,7 +1275,7 @@ class utility {
             + magnitude(mult(R[1][2],hA))
             + magnitude(mult(R[2][2],dA))
             + dB) {
-            return false;
+            return 6;
         }
 
         // case 7 : L = Ax*Bx
@@ -1256,7 +1286,7 @@ class utility {
             + magnitude(mult(R[1][0],dA))
             + magnitude(mult(R[0][2],hB))
             + magnitude(mult(R[0][1],dB))) {
-            return false;
+            return 7;
         }
 
         // case 8 : L = Ax*By
@@ -1267,7 +1297,7 @@ class utility {
             + magnitude(mult(R[1][1],dA))
             + magnitude(mult(R[0][2],wB))
             + magnitude(mult(R[0][0],dB))) {
-            return false;
+            return 8;
         }
 
         // case 9 : L = Ax*Bz
@@ -1278,7 +1308,7 @@ class utility {
             + magnitude(mult(R[1][2],dA))
             + magnitude(mult(R[0][1],wB))
             + magnitude(mult(R[0][0],hB))) {
-            return false;
+            return 9;
         }
 
         // case 10 : L = Ay*Bx
@@ -1289,7 +1319,7 @@ class utility {
             + magnitude(mult(R[0][0],dA))
             + magnitude(mult(R[1][2],hB))
             + magnitude(mult(R[1][1],dB))) {
-            return false;
+            return 10;
         }
 
         // case 11 : L = Ay*By
@@ -1300,7 +1330,7 @@ class utility {
             + magnitude(mult(R[0][1],dA))
             + magnitude(mult(R[1][2],wB))
             + magnitude(mult(R[1][0],dB))) {
-            return false;
+            return 11;
         }
 
         // case 12 : L = Ay*Bz
@@ -1311,7 +1341,7 @@ class utility {
             + magnitude(mult(R[0][2],dA))
             + magnitude(mult(R[1][1],wB))
             + magnitude(mult(R[1][0],hB))) {
-            return false;
+            return 12;
         }
 
         // case 13 : L = Az*Bx
@@ -1322,7 +1352,7 @@ class utility {
             + magnitude(mult(R[0][0],hA))
             + magnitude(mult(R[2][2],hB))
             + magnitude(mult(R[2][1],dB))) {
-            return false;
+            return 13;
         }
 
         // case 14 : L = Az*By
@@ -1333,7 +1363,7 @@ class utility {
             + magnitude(mult(R[0][1],hA))
             + magnitude(mult(R[2][2],wB))
             + magnitude(mult(R[2][0],dB))) {
-            return false;
+            return 14;
         }
 
         // case 15 : L = Az*Bz
@@ -1344,10 +1374,10 @@ class utility {
             + magnitude(mult(R[0][2],hA))
             + magnitude(mult(R[2][1],wB))
             + magnitude(mult(R[2][0],hB))) {
-            return false;
+            return 15;
         }
 
-        return true;
+        return 0;
     }
 
     static cubeBox() {
@@ -1468,7 +1498,7 @@ class ObjectForTest extends GameObject {
         this.m_type = "Test Object";
 
         this.toggle_event_step = false;
-        this.toggle_event_collision = false;
+        this.toggle_event_collision = true;
     }
 
     eventHandler(p_e) {
@@ -1488,11 +1518,19 @@ class ObjectForTest extends GameObject {
 
         if(p_e.getType() == EventType.COLLISION) {
             if(this.toggle_event_collision) {
-                LM.writeLog("testEventCollision: object " + p_e.getObject1().getId()
-                    + " collide with object " + p_e.getObject2().getId()
-                    + " at (" + p_e.getPosition().getX() + "," + p_e.getPosition().getY() + ","
-                    + p_e.getPosition().getZ() + ")");
-                return 1;
+                if(p_e.getObject1().getId() == this.getId()) {
+                    if(this.getSolidness() == Solidness.HARD) {
+                        LM.writeLog("Hard object " + this.getId() + " collide with object "
+                            + p_e.getObject2().getId() + ", remove object " + this.getId());
+                        WM.markForDelete(this);
+                        return 1;
+                    }
+                    if(this.getSolidness() == Solidness.SOFT) {
+                        LM.writeLog("Soft object " + this.getId() + " collide with object "
+                            + p_e.getObject2().getId() + ", reverse direction");
+                        this.setDirection(this.getDirection().scale(-1));
+                    }
+                }
             }
         }
 
@@ -1631,6 +1669,10 @@ function setupWebGL() {
     gl.enable(gl.DEPTH_TEST);
 }
 
+function renderClear() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+}
+
 function renderWebGL(shape, color, trans = vec3(), scal = vec3(1, 1, 1),
                      rot = 0, axis = vec3(0,1,0)) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1700,7 +1742,7 @@ function newLight(diffuse, specular, ambient) {
 
 function testLM() {
     // Start up LogManager.
-    if (LM.startUp()) {
+    if (LM.startUp() != 0) {
         console.log("Error starting log manager!\n");
         return false;
     }
@@ -2166,7 +2208,7 @@ function testWM() {
     var testnum = 0;
 
     // Start up WorldManager.
-    if (WM.startUp()) {
+    if (WM.startUp() != 0) {
         LM.writeLog("Error starting world manager!\n");
         return false;
     }
@@ -2245,7 +2287,7 @@ function testWM() {
 
 function testDM() {
     // Start up DisplayManager.
-    if (DM.startUp()) {
+    if (DM.startUp() != 0) {
         LM.writeLog("Error starting display manager!\n");
         return false;
     }
@@ -2265,7 +2307,7 @@ async function testGM() {
     LM.writeLog("testGM" + testnum + ": expect LM already started");
 
     // Start up GameManager.
-    if (GM.startUp()) {
+    if (GM.startUp() != 0) {
         LM.writeLog("Error starting game manager!\n");
         return false;
     }
@@ -2273,27 +2315,52 @@ async function testGM() {
 
     //test frontend display
     var object = new ObjectForTest();
-    object.setPosition(new Vector(-1,0,0.1));
-    object.setVelocity(new Vector(-0.01,-0,0));
+    object.setPosition(new Vector(-1,0.5,0.1));
+    object.setVelocity(new Vector(-0.01,0,0));
     object.setRotateSpeed(1);
     var model = new Model();
     model.setShape(utility.cube());
     model.setColor(utility.color("red"));
     model.setBox(utility.cubeBox());
     model.setRotateAngle(45);
+    model.setScale(vec3(0.5,0.5,0.5));
     object.setModel(model);
 
     var object2 = new ObjectForTest();
-    object2.setPosition(new Vector(1,0,0));
+    object2.setPosition(new Vector(1,0.5,0));
     object2.setVelocity(new Vector(0.01,0,0));
     object2.setRotateSpeed(-1);
-    object2.setSolidness(Solidness.SOFT);
     var model2 = new Model();
     model2.setShape(utility.cube());
     model2.setColor(utility.color("blue"));
     model2.setBox(utility.cubeBox());
     model2.setRotateAngle(60);
+    model2.setScale(vec3(0.5,0.5,0.5));
     object2.setModel(model2);
+
+    var object3 = new ObjectForTest();
+    object3.setPosition(new Vector(-1,-0.5,0.1));
+    object3.setVelocity(new Vector(-0.01,0,0));
+    object3.setRotateSpeed(1);
+    object3.setSolidness(Solidness.SOFT);
+    var model3 = new Model();
+    model3.setShape(utility.cube());
+    model3.setColor(utility.color("green"));
+    model3.setBox(utility.cubeBox());
+    model3.setScale(vec3(0.5,0.5,0.5));
+    object3.setModel(model3);
+
+    var object4 = new ObjectForTest();
+    object4.setPosition(new Vector(1,-0.5,0));
+    object4.setVelocity(new Vector(0.01,0,0));
+    object4.setRotateSpeed(-1);
+    object4.setSolidness(Solidness.SOFT);
+    var model4 = new Model();
+    model4.setShape(utility.cube());
+    model4.setColor(utility.color("yellow"));
+    model4.setBox(utility.cubeBox());
+    model4.setScale(vec3(0.5,0.5,0.5));
+    object4.setModel(model4);
 
     await GM.run();
 
