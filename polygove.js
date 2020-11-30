@@ -448,7 +448,7 @@ class WorldManager extends Manager {
         var found = false;
         for (var i = 0; i < this.m_updates.length; i++) {
             var p_o = this.m_updates[i];
-            if (this.at_following != null && p_o == new_at_following)
+            if (p_o == new_at_following)
                 found = true;
         }
 
@@ -477,7 +477,7 @@ class WorldManager extends Manager {
         var found = false;
         for (var i = 0; i < this.m_updates.length; i++) {
             var p_o = this.m_updates[i];
-            if (this.up_following != null && p_o == new_up_following)
+            if (p_o == new_up_following)
                 found = true;
         }
 
@@ -1533,6 +1533,9 @@ class TestCamera extends GameObject {
         this.setPosition(new Vector(eye[0],eye[1],eye[2]));
 
         this.following = false;
+        this.atFollowing = false;
+        this.atFollowingObject = null;
+
         this.forwarding = false;
         this.f_speed = -0.1;
         this.backwarding = false;
@@ -1565,14 +1568,27 @@ class TestCamera extends GameObject {
                 if(p_e.getKey() == 'e') {
                     if(this.following) {
                         var follow = null;
-                        LM.writeLog("following disable");
+                        LM.writeLog("eye following disable");
                     }
                     else {
                         var follow = this;
-                        LM.writeLog("following enable");
+                        LM.writeLog("eye following enable");
                     }
                     this.following = !this.following;
                     WM.setEyeFollowing(follow);
+                }
+
+                if(p_e.getKey() == 'r') {
+                    if(this.atFollowing) {
+                        var follow = null;
+                        LM.writeLog("at following disable");
+                    }
+                    else {
+                        var follow = this.atFollowingObject;
+                        LM.writeLog("at following enable");
+                    }
+                    this.atFollowing = !this.atFollowing;
+                    WM.setAtFollowing(follow);
                 }
 
                 if(p_e.getKey() == 'f') {
@@ -1615,6 +1631,10 @@ class TestCamera extends GameObject {
         }
 
         return 0;
+    }
+
+    setAtFollowing(object) {
+        this.atFollowingObject = object;
     }
 
     draw() {
@@ -2498,6 +2518,7 @@ async function testGM() {
     object4.setSolidness(Solidness.SOFT);
 
     var camera = new TestCamera();
+    camera.setAtFollowing(object4);
 
     await GM.run();
 
