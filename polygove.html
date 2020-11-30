@@ -17,6 +17,7 @@
     uniform vec4 lightPosition;
     uniform float shininess;
     uniform float cutoffThreshold;
+    uniform bool useLight;
 
 	void main() {
 
@@ -46,7 +47,12 @@
 
   		gl_PointSize = 10.0;		// Point size
 
-  		fColor = lColor * vColor;
+        if(useLight) {
+  		    fColor = lColor * vColor;
+  		}
+  		else {
+  		    fColor = vColor;
+  		}
   	}
 	</script>
 	

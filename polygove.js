@@ -187,6 +187,9 @@ class WorldManager extends Manager {
             this.setType("WorldManager");
             this.m_updates = [];
             this.m_deletions = [];
+            this.eye_following = null;
+            this.at_following = null;
+            this.up_following = null;
             WorldManager.instance = this;
         }
 
@@ -325,7 +328,7 @@ class WorldManager extends Manager {
                 var b_temp = p_temp_o.getBox();
 
                 // collision occur and p_temp_o solid?
-                if (utility.boxCollideBox(b, b_temp) == 0 && p_temp_o.isSolid())
+                if (utility.boxIntersectBox(b, b_temp) == 0 && p_temp_o.isSolid())
                     collision_list.push(p_temp_o);
             }
         }
@@ -373,7 +376,127 @@ class WorldManager extends Manager {
         // Do move.
         p_o.setPosition(where);			    // move object
 
+        // If camera is following this object, adjust camera.
+        if (this.eye_following == p_o)
+            this.setEye(p_o);
+        if (this.at_following == p_o)
+            this.setAt(p_o);
+        if (this.up_following == p_o)
+            this.setUp(p_o);
+
         return 0; // Move was ok.
+    }
+
+    setEye(new_eye) {
+        eye = vec3(new_eye.getPosition().getX(),
+            new_eye.getPosition().getY(),
+            new_eye.getPosition().getZ());
+    }
+
+    setAt(new_at) {
+        at = vec3(new_at.getPosition().getX(),
+            new_at.getPosition().getY(),
+            new_at.getPosition().getZ());
+    }
+
+    setUp(new_up) {
+        up = new_up.getBox().getNormalY();
+    }
+
+    // Set camera position to follow Object.
+    // Set to NULL to stop following.
+    // If new_eye_following not legit, return -1 else return 0.
+    setEyeFollowing(new_eye_following) {
+        // Set to NULL to turn `off' following.
+        if (new_eye_following == null) {
+            this.eye_following = null;
+            return 0;
+        }
+
+        // Iterate over all Objects. Make sure new_eye_following is one of the Objects
+        // then set found to true.
+        var found = false;
+        for (var i = 0; i < this.m_updates.length; i++) {
+            var p_o = this.m_updates[i];
+            if (p_o == new_eye_following)
+                found = true;
+        }
+
+        // If found, adjust attribute accordingly and set eye position.
+        if (found) {
+            this.eye_following = new_eye_following;
+            this.setEye(this.eye_following);
+            return 0;
+        }
+
+        // If we get here, was not legit.  Don't change current eye position.
+        return -1;
+    }
+
+    // Set camera direction to follow Object.
+    // Set to NULL to stop following.
+    // If new_at_following not legit, return -1 else return 0.
+    setAtFollowing(new_at_following) {
+        // Set to NULL to turn `off' following.
+        if (new_at_following == null) {
+            this.at_following = null;
+            return 0;
+        }
+
+        // Iterate over all Objects. Make sure new_at_following is one of the Objects
+        // then set found to true.
+        var found = false;
+        for (var i = 0; i < this.m_updates.length; i++) {
+            var p_o = this.m_updates[i];
+            if (this.at_following != null && p_o == new_at_following)
+                found = true;
+        }
+
+        if (found) {
+            this.at_following = new_at_following;
+            this.setAt(this.at_following);
+            return 0;
+        }
+
+        // If we get here, was not legit.  Don't change current eye position.
+        return -1;
+    }
+
+    // Set camera orientation to follow Object.
+    // Set to NULL to stop following.
+    // If new_at_following not legit, return -1 else return 0.
+    setUpFollowing(new_up_following) {
+        // Set to NULL to turn `off' following.
+        if (new_up_following == null) {
+            this.up_following = null;
+            return 0;
+        }
+
+        // Iterate over all Objects. Make sure new_up_following is one of the Objects
+        // then set found to true.
+        var found = false;
+        for (var i = 0; i < this.m_updates.length; i++) {
+            var p_o = this.m_updates[i];
+            if (this.up_following != null && p_o == new_up_following)
+                found = true;
+        }
+
+        if (found) {
+            this.up_following = new_up_following;
+            this.setUp(this.up_following);
+            return 0;
+        }
+
+        // If we get here, was not legit.  Don't change current eye position.
+        return -1;
+    }
+
+    // Set camera position, direction, orientation to following Objects.
+    // Set to NULL to stop following.
+    setCameraFollowing(new_eye_following, new_at_following, new_up_following) {
+        this.setEyeFollowing(new_eye_following);
+        this.setAtFollowing(new_at_following);
+        this.setUpFollowing(new_up_following);
     }
 
     // Send event to all Objects.
@@ -1089,24 +1212,15 @@ class Model {
         this.m_box.setWidth(this.m_scale[0]);
         this.m_box.setHeight(this.m_scale[1]);
         this.m_box.setDepth(this.m_scale[2]);
-        this.m_box.rotateBox(this.m_rotateAngle,this.m_rotateAxis);
     }
 }
 
 class Box {
-    // Create box with position of center, 3 face normal vectors
     constructor(init_center = vec3(0,0,0),
-                init_normal_x = vec3(0,0,0),
-                init_normal_y = vec3(0,0,0),
-                init_normal_z = vec3(0,0,0),
                 init_width = 0,
                 init_height = 0,
-                init_depth = 0
-                ) {
+                init_depth = 0) {
         this.m_center = init_center;
-        this.m_normal_x = init_normal_x;
-        this.m_normal_y = init_normal_y;
-        this.m_normal_z = init_normal_z;
         this.m_width = init_width;
         this.m_height = init_height;
         this.m_depth = init_depth
@@ -1118,30 +1232,6 @@ class Box {
 
     getCenter() {
         return this.m_center;
-    }
-
-    setNormalX(new_normal_x) {
-        this.m_normal_x = new_normal_x;
-    }
-
-    getNormalX() {
-        return this.m_normal_x;
-    }
-
-    setNormalY(new_normal_y) {
-        this.m_normal_y = new_normal_y;
-    }
-
-    getNormalY() {
-        return this.m_normal_y;
-    }
-
-    setNormalZ(new_normal_z) {
-        this.m_normal_z = new_normal_z;
-    }
-
-    getNormalZ() {
-        return this.m_normal_z;
     }
 
     setWidth(new_width) {
@@ -1167,24 +1257,6 @@ class Box {
     getDepth() {
         return this.m_depth;
     }
-
-    rotateBox(angle, axis) {
-        var new_normal_x = this.rotateNormal(this.m_normal_x, angle, axis);
-        var new_normal_y = this.rotateNormal(this.m_normal_y, angle, axis);
-        var new_normal_z = this.rotateNormal(this.m_normal_z, angle, axis);
-
-        this.m_normal_x = new_normal_x;
-        this.m_normal_y = new_normal_y;
-        this.m_normal_z = new_normal_z;
-    }
-
-    rotateNormal(normal,angle, axis) {
-        var rot = rotate(angle,axis);
-        var mat_normal = transpose(mat4(normal,1));
-        var mat_rotate = mult(rot,mat_normal);
-        var new_normal = vec3(transpose(mat_rotate)[0]);
-        return new_normal;
-    }
 }
 
 class utility {
@@ -1195,201 +1267,44 @@ class utility {
         });
     }
 
-    //return 0 if collision occur
-    static boxCollideBox(box1, box2) {
-        var pA = box1.getCenter();
-        var Ax = box1.getNormalX();
-        var Ay = box1.getNormalY();
-        var Az = box1.getNormalZ();
-        var wA = box1.getWidth()/2;
-        var hA = box1.getHeight()/2;
-        var dA = box1.getDepth()/2;
+    static boxIntersectBox(box1, box2) {
+        var box1_center = box1.getCenter();
+        var box1_x = box1.getWidth()/2;
+        var box1_y = box1.getHeight()/2;
+        var box1_z = box1.getDepth()/2;
+        var box2_center = box2.getCenter();
+        var box2_x = box2.getWidth()/2;
+        var box2_y = box2.getHeight()/2;
+        var box2_z = box2.getDepth()/2;
 
-        var pB = box2.getCenter();
-        var Bx = box2.getNormalX();
-        var By = box2.getNormalY();
-        var Bz = box2.getNormalZ();
-        var wB = box2.getWidth()/2;
-        var hB = box2.getHeight()/2;
-        var dB = box2.getDepth()/2;
+        var box1_min_x = box1_center[0] - box1_x;
+        var box1_max_x = box1_center[0] + box1_x;
+        var box1_min_y = box1_center[1] - box1_y;
+        var box1_max_y = box1_center[1] + box1_y;
+        var box1_min_z = box1_center[2] - box1_z;
+        var box1_max_z = box1_center[2] + box1_z;
 
-        var T = subtract(pB,pA);
-        var R = [[dot(Ax,Bx),dot(Ax,By),dot(Ax,Bz)],
-                [dot(Ay,Bx),dot(Ay,By),dot(Ay,Bz)],
-                [dot(Az,Bx),dot(Az,By),dot(Az,Bz)]];
+        var box2_min_x = box2_center[0] - box2_x;
+        var box2_max_x = box2_center[0] + box2_x;
+        var box2_min_y = box2_center[1] - box2_y;
+        var box2_max_y = box2_center[1] + box2_y;
+        var box2_min_z = box2_center[2] - box2_z;
+        var box2_max_z = box2_center[2] + box2_z;
 
-        // case 1 : L = Ax
-        // |T.Ax| > wA + |wB*Rxx| + |hB*Rxy| + |dB*Rxz|
-        if(dot(T,Ax) >
-            wA
-            + magnitude(mult(R[0][0],wB))
-            + magnitude(mult(R[0][1],hB))
-            + magnitude(mult(R[0][2],dB))) {
-            return 1;
+        if ((box1_min_x <= box2_max_x && box1_max_x >= box2_min_x) &&
+            (box1_min_y <= box2_max_y && box1_max_y >= box2_min_y) &&
+            (box1_min_z <= box2_max_z && box1_max_z >= box2_min_z)) {
+            return 0;
         }
-
-        //  case 2 : L = Ay
-        // |T.Ay| > hA + |wB*Ryx| + |hB*Ryy| + |dB*Ryz|
-        if(dot(T,Ay) >
-            hA
-            + magnitude(mult(R[1][0],wB))
-            + magnitude(mult(R[1][1],hB))
-            + magnitude(mult(R[1][2],dB))) {
-            return 2;
-        }
-
-        //  case 3 : L = Az
-        // |T.Az| > dA + |wB*Rzx| + |hB*Rzy| + |dB*Rzz|
-        if(dot(T,Az) >
-            dA
-            + magnitude(mult(R[2][0],wB))
-            + magnitude(mult(R[2][1],hB))
-            + magnitude(mult(R[2][2],dB))) {
-            return 3;
-        }
-
-        //  case 4 : L = Bx
-        // |T.Bx| > |wA*Rxx| + |hA*Ryx| + |dA*Rzx| + wB
-        if(dot(T,Bx) >
-            magnitude(mult(R[0][0],wA))
-            + magnitude(mult(R[1][0],hA))
-            + magnitude(mult(R[2][0],dA))
-            + wB) {
-            return 4;
-        }
-
-        //  case 5 : L = By
-        // |T.By| > |wA*Rxy| + |hA*Ryy| + |dA*Rzy| + hB
-        if(dot(T,By) >
-            magnitude(mult(R[0][1],wA))
-            + magnitude(mult(R[1][1],hA))
-            + magnitude(mult(R[2][1],dA))
-            + hB) {
-            return 5;
-        }
-
-        //  case 6 : L = Bz
-        // |T.Bz| > |wA*Rxz| + |hA*Ryz| + |dA*Rzz| + dB
-        if(dot(T,Bz) >
-            magnitude(mult(R[0][2],wA))
-            + magnitude(mult(R[1][2],hA))
-            + magnitude(mult(R[2][2],dA))
-            + dB) {
-            return 6;
-        }
-
-        // case 7 : L = Ax*Bx
-        // |T.(Ax*Bx)| > |hA*Rzx| + |dA*Ryx| + |hB*Rxz| + |dB*Rxy|
-        // T.(Ax*Bx) = (T.Az)*Ryx - (T.Ay)*Rzx
-        if(dot(T,Az)*R[1][0] - dot(T,Ay)*R[2][0] >
-            magnitude(mult(R[2][0],hA))
-            + magnitude(mult(R[1][0],dA))
-            + magnitude(mult(R[0][2],hB))
-            + magnitude(mult(R[0][1],dB))) {
-            return 7;
-        }
-
-        // case 8 : L = Ax*By
-        // |T.(Ax*By)| > |hA*Rzy| + |dA*Ryy| + |wB*Rxz| + |dB*Rxx|
-        // T.(Ax*By) = (T.Az)*Ryy - (T.Ay)*Rzy
-        if(dot(T,Az)*R[1][1] - dot(T,Ay)*R[2][1] >
-            magnitude(mult(R[2][1],hA))
-            + magnitude(mult(R[1][1],dA))
-            + magnitude(mult(R[0][2],wB))
-            + magnitude(mult(R[0][0],dB))) {
-            return 8;
-        }
-
-        // case 9 : L = Ax*Bz
-        // |T.(Ax*Bz)| > |hA*Rzz| + |dA*Ryz| + |wB*Rxy| + |hB*Rxx|
-        // T.(Ax*Bz) = (T.Az)*Ryz - (T.Ay)*Rzz
-        if(dot(T,Az)*R[1][2] - dot(T,Ay)*R[2][2] >
-            magnitude(mult(R[2][2],hA))
-            + magnitude(mult(R[1][2],dA))
-            + magnitude(mult(R[0][1],wB))
-            + magnitude(mult(R[0][0],hB))) {
-            return 9;
-        }
-
-        // case 10 : L = Ay*Bx
-        // |T.(Ay*Bx)| > |wA*Rzx| + |dA*Rxx| + |hB*Ryz| + |dB*Ryy|
-        // T.(Ay*Bx) = (T.Ax)*Rzx - (T.Az)*Rxx
-        if(dot(T,Ax)*R[2][0] - dot(T,Az)*R[0][0] >
-            magnitude(mult(R[2][0],wA))
-            + magnitude(mult(R[0][0],dA))
-            + magnitude(mult(R[1][2],hB))
-            + magnitude(mult(R[1][1],dB))) {
-            return 10;
-        }
-
-        // case 11 : L = Ay*By
-        // |T.(Ay*By)| > |wA*Rzy| + |dA*Rxy| + |wB*Ryz| + |dB*Ryx|
-        // T.(Ay*By) = (T.Ax)*Rzy - (T.Az)*Rxy
-        if(dot(T,Ax)*R[2][1] - dot(T,Az)*R[0][1] >
-            magnitude(mult(R[2][1],wA))
-            + magnitude(mult(R[0][1],dA))
-            + magnitude(mult(R[1][2],wB))
-            + magnitude(mult(R[1][0],dB))) {
-            return 11;
-        }
-
-        // case 12 : L = Ay*Bz
-        // |T.(Ay*Bz)| > |wA*Rzz| + |dA*Rxz| + |wB*Ryy| + |hB*Ryx|
-        // T.(Ay*Bz) = (T.Ax)*Rzz - (T.Az)*Rxz
-        if(dot(T,Ax)*R[2][2] - dot(T,Az)*R[0][2] >
-            magnitude(mult(R[2][2],wA))
-            + magnitude(mult(R[0][2],dA))
-            + magnitude(mult(R[1][1],wB))
-            + magnitude(mult(R[1][0],hB))) {
-            return 12;
-        }
-
-        // case 13 : L = Az*Bx
-        // |T.(Az*Bx)| > |wA*Ryx| + |hA*Rxx| + |hB*Rzz| + |dB*Rzy|
-        // T.(Az*Bx) = (T.Ay)*Rxx - (T.Ax)*Ryx
-        if(dot(T,Ay)*R[0][0] - dot(T,Ax)*R[1][0] >
-            magnitude(mult(R[1][0],wA))
-            + magnitude(mult(R[0][0],hA))
-            + magnitude(mult(R[2][2],hB))
-            + magnitude(mult(R[2][1],dB))) {
-            return 13;
-        }
-
-        // case 14 : L = Az*By
-        // |T.(Az*By)| > |wA*Ryy| + |hA*Rxy| + |wB*Rzz| + |dB*Rzx|
-        // T.(Az*By) = (T.Ay)*Rxy - (T.Ax)*Ryy
-        if(dot(T,Ay)*R[0][1] - dot(T,Ax)*R[1][1] >
-            magnitude(mult(R[1][1],wA))
-            + magnitude(mult(R[0][1],hA))
-            + magnitude(mult(R[2][2],wB))
-            + magnitude(mult(R[2][0],dB))) {
-            return 14;
-        }
-
-        // case 15 : L = Az*Bz
-        // |T.(Az*Bz)| > |wA*Ryz| + |hA*Rxz| + |wB*Rzy| + |hB*Rzx|
-        // T.(Az*Bz) = (T.Ay)*Rxz - (T.Ax)*Ryz
-        if(dot(T,Ay)*R[0][2] - dot(T,Ax)*R[1][2] >
-            magnitude(mult(R[1][2],wA))
-            + magnitude(mult(R[0][2],hA))
-            + magnitude(mult(R[2][1],wB))
-            + magnitude(mult(R[2][0],hB))) {
-            return 15;
-        }
-
-        return 0;
     }
 
     static cubeBox() {
         var center = vec3(0,0,0);
-        var normalX = vec3(1,0,0);
-        var normalY = vec3(0,1,0);
-        var normalZ = vec3(0,0,1);
         var width = 1;
         var height = 1;
         var depth = 1;
 
-        var box = new Box(center,normalX,normalY,normalZ,width,height,depth)
+        var box = new Box(center,width,height,depth);
         return box;
     }
 
@@ -1493,12 +1408,29 @@ class utility {
 }
 
 class ObjectForTest extends GameObject {
-    constructor() {
+    constructor(pos, velo, rot, shape, color, angle, scale) {
         super();
         this.m_type = "Test Object";
 
         this.toggle_event_step = false;
         this.toggle_event_collision = true;
+
+        this.collision_cooldown = 10;
+        this.collision_count = 0;
+
+        this.draw_box = false;
+
+        this.setPosition(pos);
+        this.setVelocity(velo);
+        this.setRotateSpeed(rot);
+        var model = new Model();
+        model.setShape(shape);
+        model.setColor(color);
+        model.setBox(utility.cubeBox());
+        model.setRotateAngle(angle);
+        model.setScale(scale);
+        model.updateBox();
+        this.setModel(model);
     }
 
     eventHandler(p_e) {
@@ -1510,6 +1442,10 @@ class ObjectForTest extends GameObject {
                 LM.writeLog("testEventStep: odd step not handled");
             }
 
+            if(this.collision_count > 0) {
+                this.collision_count--;
+            }
+
             if (p_e.getStepCount() % 200 == 0) {
                 LM.writeLog("testObject Rendering: Step " + p_e.getStepCount() + ", reverse direction");
                 this.setDirection(this.getDirection().scale(-1));
@@ -1518,16 +1454,16 @@ class ObjectForTest extends GameObject {
 
         if(p_e.getType() == EventType.COLLISION) {
             if(this.toggle_event_collision) {
-                if(p_e.getObject1().getId() == this.getId()) {
+                if(this.collision_count <= 0) {
+                    this.collision_count = this.collision_cooldown;
+
                     if(this.getSolidness() == Solidness.HARD) {
-                        LM.writeLog("Hard object " + this.getId() + " collide with object "
-                            + p_e.getObject2().getId() + ", remove object " + this.getId());
+                        LM.writeLog("Hard object " + this.getId() + " collided, remove this object ");
                         WM.markForDelete(this);
                         return 1;
                     }
                     if(this.getSolidness() == Solidness.SOFT) {
-                        LM.writeLog("Soft object " + this.getId() + " collide with object "
-                            + p_e.getObject2().getId() + ", reverse direction");
+                        LM.writeLog("Soft object " + this.getId() + " collided, reverse direction");
                         this.setDirection(this.getDirection().scale(-1));
                     }
                 }
@@ -1536,17 +1472,12 @@ class ObjectForTest extends GameObject {
 
         if (p_e.getType() == EventType.KEYBOARD) {
             if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
-                if (p_e.getKey() == 'q') {
-                    LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect");
-                    GM.setGameOver(true);
-                    return 1;
-                }
-                if (p_e.getKey() == 'a') {
+                if (p_e.getKey() == 'z') {
                     LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect");
                     this.getModel().setRotateAngle(this.getModel().getRotateAngle()+10);
                     return 1;
                 }
-                if (p_e.getKey() == 's') {
+                if (p_e.getKey() == 'x') {
                     this.toggle_event_step = !this.toggle_event_step;
                     if(this.toggle_event_step) {
                         var toggle = "enable event step"
@@ -1558,7 +1489,7 @@ class ObjectForTest extends GameObject {
                     return 1;
                 }
 
-                if (p_e.getKey() == 'd') {
+                if (p_e.getKey() == 'c') {
                     this.toggle_event_collision = !this.toggle_event_collision;
                     if(this.toggle_event_collision) {
                         var toggle = "enable event collision"
@@ -1568,6 +1499,10 @@ class ObjectForTest extends GameObject {
                     }
                     LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect : " + toggle);
                     return 1;
+                }
+
+                if(p_e.getKey() == 'g') {
+                    this.draw_box = !this.draw_box;
                 }
             }
         }
@@ -1581,7 +1516,114 @@ class ObjectForTest extends GameObject {
 
         return 0;
     }
+
+    draw() {
+        super.draw();
+        if(this.draw_box) {
+            renderBox(this.getBox());
+        }
+    }
 }
+
+class TestCamera extends GameObject {
+    constructor() {
+        super();
+        this.m_type = "Test Camera";
+        this.setSolidness(Solidness.SPECTRAL);
+        this.setPosition(new Vector(eye[0],eye[1],eye[2]));
+
+        this.following = false;
+        this.forwarding = false;
+        this.f_speed = -0.1;
+        this.backwarding = false;
+        this.b_speed = 0.1;
+
+        this.draw_shape = false;
+        this.draw_box = false;
+        var model = new Model();
+        model.setShape(utility.cube());
+        model.setColor(utility.color("gray"));
+        model.setBox(utility.cubeBox());
+        this.setModel(model);
+    }
+
+    eventHandler(p_e) {
+        if (p_e.getType() == EventType.KEYBOARD) {
+            if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
+                if (p_e.getKey() == 'q') {
+                    LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect");
+                    GM.setGameOver(true);
+                    return 1;
+                }
+
+                if (p_e.getKey() == 'z') {
+                    LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect");
+                    this.getModel().setRotateAngle(this.getModel().getRotateAngle()+10);
+                    return 1;
+                }
+
+                if(p_e.getKey() == 'e') {
+                    if(this.following) {
+                        var follow = null;
+                        LM.writeLog("following disable");
+                    }
+                    else {
+                        var follow = this;
+                        LM.writeLog("following enable");
+                    }
+                    this.following = !this.following;
+                    WM.setEyeFollowing(follow);
+                }
+
+                if(p_e.getKey() == 'f') {
+                    this.draw_shape = !this.draw_shape;
+                }
+
+                if(p_e.getKey() == 'g') {
+                    this.draw_box = !this.draw_box;
+                }
+
+                if (p_e.getKey() == 'w' || p_e.getKey() == 's') {
+                    if (p_e.getKey() == 'w') {
+                        this.forwarding = !this.forwarding;
+                        this.backwarding = false;
+                    }
+                    else if (p_e.getKey() == 's'){
+                        this.backwarding = !this.backwarding;
+                        this.forwarding = false;
+                    }
+
+                    var new_v = this.getVelocity();
+                    if(this.forwarding) {
+                        LM.writeLog("testCamera: move forward");
+                        new_v.setZ(this.f_speed);
+                    }
+                    else if (this.backwarding) {
+                        LM.writeLog("testCamera: move backward");
+                        new_v.setZ(this.b_speed);
+                    }
+                    else {
+                        LM.writeLog("testCamera: stop move");
+                        var new_v = this.getVelocity();
+                        new_v.setZ(0);
+                    }
+
+                    this.setVelocity(new_v);
+                }
+
+            }
+        }
+
+        return 0;
+    }
+
+    draw() {
+        if(this.draw_shape) {
+            super.draw();
+        }
+    }
+}
+
 
 var gl;
 var program;
@@ -1667,6 +1709,9 @@ function setupWebGL() {
 
     // Clear <canvas> by clearing the color buffer
     gl.enable(gl.DEPTH_TEST);
+
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
 }
 
 function renderClear() {
@@ -1676,6 +1721,7 @@ function renderClear() {
 function renderWebGL(shape, color, trans = vec3(), scal = vec3(1, 1, 1),
                      rot = 0, axis = vec3(0,1,0)) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.CULL_FACE);
 
     function renderThis() {
         viewMatrix = lookAt(eye, at, up);
@@ -1686,6 +1732,8 @@ function renderWebGL(shape, color, trans = vec3(), scal = vec3(1, 1, 1),
         modelMatrix = mult(modelMatrix, rotate(rot,axis));
         mvMatrix = mult(viewMatrix, modelMatrix);
         gl.uniformMatrix4fv(modelViewLoc, false, flatten(mvMatrix));
+
+        gl.uniform1i(gl.getUniformLocation(program, "useLight"), 1);
 
         drawShape(shape, color);
     }
@@ -1728,6 +1776,103 @@ function drawShape(shape, color) {
     gl.enableVertexAttribArray(vColor);
 
     gl.drawArrays(gl.TRIANGLES, 0, vertices.length);
+}
+
+function renderBox(box, trans = vec3(), scal = vec3(1, 1, 1),
+                     rot = 0, axis = vec3(0,1,0)) {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.disable(gl.CULL_FACE);
+
+    function renderThis() {
+        viewMatrix = lookAt(eye, at, up);
+        modelMatrix = mat4();
+
+        modelMatrix = mult(modelMatrix, translate(trans));
+        modelMatrix = mult(modelMatrix, scalem(scal));
+        modelMatrix = mult(modelMatrix, rotate(rot,axis));
+        mvMatrix = mult(viewMatrix, modelMatrix);
+        gl.uniformMatrix4fv(modelViewLoc, false, flatten(mvMatrix));
+
+        gl.uniform1i(gl.getUniformLocation(program, "useLight"), 0);
+
+        drawBox(box);
+    }
+
+    requestAnimationFrame(renderThis);
+}
+
+function drawBox(box) {
+    for(var i = 1; i <= 6; i++) {
+        drawBoxFace(box,i);
+    }
+
+}
+
+function drawBoxFace(box,faceNum) {
+    var vertices = getBoxFace(box,faceNum);
+    var fragColors = [];
+
+    for (var i = 0; i < vertices.length; i++) {
+        fragColors.push(utility.color("white"));
+    }
+
+    var pBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW);
+
+    var vPosition = gl.getAttribLocation(program, "vPosition");
+    gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);
+
+    var cBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(fragColors), gl.STATIC_DRAW);
+
+    var vColor = gl.getAttribLocation(program, "vColor");
+    gl.vertexAttribPointer(vColor, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vColor);
+
+    gl.drawArrays(gl.LINE_LOOP, 0, vertices.length);
+}
+
+function getBoxFace(box,faceNum) {
+    var center = vec4(box.getCenter(),1);
+    var x = scale(box.getWidth()/2,vec4(1,0,0,0));
+    var y = scale(box.getHeight()/2,vec4(0,1,0,0))
+    var z = scale(box.getDepth()/2,vec4(0,0,1,0))
+    var vertices = [
+        add(subtract(subtract(center,x),y),z),
+        add(add(subtract(center,x),y),z),
+        add(add(add(center,x),y),z),
+        add(subtract(add(center,x),y),z),
+        subtract(subtract(subtract(center,x),y),z),
+        subtract(add(subtract(center,x),y),z),
+        subtract(add(add(center,x),y),z),
+        subtract(subtract(add(center,x),y),z)
+    ];
+
+    var face = [];
+    switch (faceNum) {
+        case 1:
+            face = [vertices[1],vertices[0],vertices[3],vertices[2]];
+            break;
+        case 2:
+            face = [vertices[2],vertices[3],vertices[7],vertices[6]];
+            break;
+        case 3:
+            face = [vertices[3],vertices[0],vertices[4],vertices[7]];
+            break;
+        case 4:
+            face = [vertices[6],vertices[5],vertices[1],vertices[2]];
+            break;
+        case 5:
+            face = [vertices[4],vertices[5],vertices[6],vertices[7]];
+            break;
+        case 6:
+            face = [vertices[5],vertices[4],vertices[0],vertices[1]];
+            break;
+    }
+    return face;
 }
 
 // change light attributes (diffuse, specular, ambient)
@@ -2314,53 +2459,45 @@ async function testGM() {
 
 
     //test frontend display
-    var object = new ObjectForTest();
-    object.setPosition(new Vector(-1,0.5,0.1));
-    object.setVelocity(new Vector(-0.01,0,0));
-    object.setRotateSpeed(1);
-    var model = new Model();
-    model.setShape(utility.cube());
-    model.setColor(utility.color("red"));
-    model.setBox(utility.cubeBox());
-    model.setRotateAngle(45);
-    model.setScale(vec3(0.5,0.5,0.5));
-    object.setModel(model);
+    var object = new ObjectForTest(
+        new Vector(-1.1,0.6,0.1),
+        new Vector(-0.01,0,0),
+        1,
+        utility.cube(),
+        utility.color("red"),
+        45,
+        vec3(0.5,0.5,0.5));
 
-    var object2 = new ObjectForTest();
-    object2.setPosition(new Vector(1,0.5,0));
-    object2.setVelocity(new Vector(0.01,0,0));
-    object2.setRotateSpeed(-1);
-    var model2 = new Model();
-    model2.setShape(utility.cube());
-    model2.setColor(utility.color("blue"));
-    model2.setBox(utility.cubeBox());
-    model2.setRotateAngle(60);
-    model2.setScale(vec3(0.5,0.5,0.5));
-    object2.setModel(model2);
+    var object2 = new ObjectForTest(
+        new Vector(1,0.5,0),
+        new Vector(0.01,0,0),
+        -1,
+        utility.cube(),
+        utility.color("blue"),
+        60,
+        vec3(0.5,0.5,0.5));
 
-    var object3 = new ObjectForTest();
-    object3.setPosition(new Vector(-1,-0.5,0.1));
-    object3.setVelocity(new Vector(-0.01,0,0));
-    object3.setRotateSpeed(1);
+    var object3 = new ObjectForTest(
+        new Vector(-1,-0.5,0.1),
+        new Vector(-0.01,0,0),
+        1,
+        utility.cube(),
+        utility.color("green"),
+        0,
+        vec3(0.5,0.5,0.5));
     object3.setSolidness(Solidness.SOFT);
-    var model3 = new Model();
-    model3.setShape(utility.cube());
-    model3.setColor(utility.color("green"));
-    model3.setBox(utility.cubeBox());
-    model3.setScale(vec3(0.5,0.5,0.5));
-    object3.setModel(model3);
 
-    var object4 = new ObjectForTest();
-    object4.setPosition(new Vector(1,-0.5,0));
-    object4.setVelocity(new Vector(0.01,0,0));
-    object4.setRotateSpeed(-1);
+    var object4 = new ObjectForTest(
+        new Vector(1,-0.5,0),
+        new Vector(0.01,0,0),
+        -1,
+        utility.cube(),
+        utility.color("yellow"),
+        45,
+        vec3(0.5,0.5,0.5));
     object4.setSolidness(Solidness.SOFT);
-    var model4 = new Model();
-    model4.setShape(utility.cube());
-    model4.setColor(utility.color("yellow"));
-    model4.setBox(utility.cubeBox());
-    model4.setScale(vec3(0.5,0.5,0.5));
-    object4.setModel(model4);
+
+    var camera = new TestCamera();
 
     await GM.run();
 
