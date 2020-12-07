@@ -262,9 +262,7 @@ class WorldManager extends Manager {
             var moved = false;
 
             //If GameObject should change position, then move.
-            if (new_pos.getX() != p_o.getPosition().getX()
-                || new_pos.getY() != p_o.getPosition().getY()
-                || new_pos.getZ() != p_o.getPosition().getZ()){
+            if (!equal(new_pos,p_o.getPosition())){
                 moved = this.moveObject(p_o, new_pos);
             }
 
@@ -388,19 +386,15 @@ class WorldManager extends Manager {
     }
 
     setEye(new_eye) {
-        eye = vec3(new_eye.getPosition().getX(),
-            new_eye.getPosition().getY(),
-            new_eye.getPosition().getZ());
+        eye = new_eye.getPosition();
     }
 
     setAt(new_at) {
-        at = vec3(new_at.getPosition().getX(),
-            new_at.getPosition().getY(),
-            new_at.getPosition().getZ());
+        at = new_at.getPosition();
     }
 
     setUp(new_up) {
-        up = new_up.getBox().getNormalY();
+        up = new_up.getPosition();
     }
 
     // Set camera position to follow Object.
@@ -539,10 +533,9 @@ class DisplayManager extends Manager {
         super.shutDown();
     }
 
-    render(shape, color, trans = vec3(), scal = vec3(1, 1, 1),
-           rot = 0, axis = vec3(0,1,0)) {
+    render(object) {
         if(this.isStarted()) {
-            renderWebGL(shape, color, trans, scal, rot, axis);
+            renderWebGL(object);
         }
     }
 }
@@ -661,12 +654,21 @@ class GameObject {
         this.m_id = object_static_id;			// Unique game engine defined identifier.
         object_static_id++;
         this.m_type = "Object";					// Game programmer defined type.
-        this.m_position = new Vector();  		// Position in game world.
-        this.m_direction = new Vector();  		// Direction vector.
+        this.m_position = new vec3();  		    // Position in game world.
+        this.m_direction = new vec3();  		// Direction vector.
         this.m_speed = 0;
-        this.m_rotateSpeed = 0;
+        this.m_init_position = new vec3();
+        this.m_model_matrix = new mat4();
+        this.m_translate = new vec3();
+        this.m_scale = new vec3(1,1,1);
+        this.m_rotate_angle = 0;
+        this.m_rotate_axis = vec3(0,1,0);
+        this.m_rotate_speed = 0;
         this.m_solidness = Solidness.HARD;		// Solidness of object.
         this.m_model = new Model();  			// Model associated with GameObject.
+        this.m_box = new Box();
+        this.m_hierarchy_parent = null;
+        this.m_hierarchy_list = [];
 
         this.WM.insertObject(this);
     }
@@ -692,6 +694,17 @@ class GameObject {
     }
 
     // Set position of GameObject.
+    setInitialPosition(new_pos) {
+        this.m_init_position = new_pos;
+        this.setPosition(new_pos);
+    }
+
+    // Get position of GameObject.
+    getInitialPosition() {
+        return this.m_init_position;
+    }
+
+    // Set position of GameObject.
     setPosition(new_pos) {
         this.m_position = new_pos;
     }
@@ -699,12 +712,6 @@ class GameObject {
     // Get position of GameObject.
     getPosition() {
         return this.m_position;
-    }
-
-    // Handle event (default is to ignore everything).
-    // Return 0 if ignored , else 1 if handled.
-    eventHandler(p_e) {
-        return 0;
     }
 
     // Set speed of GameObject.
@@ -729,39 +736,97 @@ class GameObject {
 
     // Set direction and speed of GameObject.
     setVelocity(new_velocity) {
-        var new_direction = new Vector(new_velocity.getX(), new_velocity.getY(), new_velocity.getZ());
-        new_direction.normalize();
-        this.setDirection(new_direction);
-
-        this.setSpeed(new_velocity.getMagnitude());
+        this.setSpeed(magnitude(new_velocity));
+        if(this.m_speed != 0) {
+            this.setDirection(normalize(new_velocity));
+        }
+        else {
+            this.setDirection(vec3(0,0,0));
+        }
     }
 
     // Get velocity of GameObject based on direction and speed.
     getVelocity() {
-        var velocity = new Vector(this.m_direction.getX(), this.m_direction.getY(), this.m_direction.getZ());
-        velocity.scale(this.m_speed);
+        var velocity = scale(this.m_speed, this.m_direction);
 
         return velocity;
     }
 
+    // Set Rotate angle of GameObject.
+    setRotateAngle(new_rotateAngle) {
+        this.m_rotate_angle = new_rotateAngle;
+        this.m_model.setRotateAngle(this.m_rotate_angle);
+    }
+
+    // Get Rotate angle of GameObject.
+    getRotateAngle() {
+        return this.m_rotate_angle;
+    }
+
+    // Set Rotate axis of GameObject.
+    setRotateAxis(new_rotateAxis) {
+        this.m_rotate_axis = new_rotateAxis;
+        this.m_model.setRotateAxis(this.m_rotate_axis);
+    }
+
+    // Get Rotate axis of GameObject.
+    getRotateAxis() {
+        return this.m_rotate_axis;
+    }
+
     // Set Rotate speed of GameObject.
     setRotateSpeed(new_rotateSpeed) {
-        this.m_rotateSpeed = new_rotateSpeed;
+        this.m_rotate_speed = new_rotateSpeed;
     }
 
     // Get Rotate speed of GameObject.
     getRotateSpeed() {
-        return this.m_rotateSpeed;
+        return this.m_rotate_speed;
     }
 
     // Predict GameObject position based on speed and direction.
+    // Also add Hierarchy parent's velocity
     // Return predicted position.
     predictPosition() {
+        var new_pos = this.m_init_position;
+
+        if (this.m_hierarchy_parent != null) {
+            new_pos = this.predictHierarchyPosition(new_pos);
+        }
+
         // Add velocity to position.
-        var new_pos = this.getPosition().add(this.getVelocity());
+        new_pos = add(new_pos, this.m_translate);
+        new_pos = add(new_pos, this.getVelocity());
 
         // Return new position.
         return new_pos;
+    }
+
+    predictHierarchyPosition(pos) {
+        if(this.m_hierarchy_parent != null) {
+            var parent = this.m_hierarchy_parent;
+
+            if (parent.getHierarchyParent() != null) {
+                pos = parent.predictHierarchyPosition(pos);
+            }
+
+            pos = utility.vec3MultMatrix(pos, parent.m_model_matrix);
+            pos = add(pos, parent.m_init_position);
+        }
+        return pos;
+    }
+
+    updateModelMatrix() {
+        this.m_translate = add(this.m_translate, this.getVelocity());
+        this.m_rotate_angle = this.m_rotate_angle + this.m_rotate_speed;
+
+        this.m_model_matrix = mat4();
+
+        this.m_model_matrix = mult(this.m_model_matrix, translate(this.m_translate));
+        this.m_model_matrix = mult(this.m_model_matrix, scalem(this.m_scale));
+        this.m_model_matrix = mult(this.m_model_matrix, rotate(this.m_rotate_angle,
+            this.m_rotate_axis));
+
     }
 
     // True if HARD or SOFT, else false.
@@ -792,20 +857,8 @@ class GameObject {
     setModel(new_model) {
         this.m_model = new_model;
 
-        if(this.m_position.getX() != this.m_model.getTranslate()[0]
-            || this.m_position.getY() != this.m_model.getTranslate()[1]
-            || this.m_position.getZ() != this.m_model.getTranslate()[2]) {
-            var new_pos = vec3(this.m_position.getX(), this.m_position.getY(), this.m_position.getZ());
-            this.m_model.setTranslate(new_pos);
-        }
-
-        if(this.m_position.getX() != this.m_model.getBox()[0]
-            || this.m_position.getY() != this.m_model.getBox()[1]
-            || this.m_position.getZ() != this.m_model.getBox()[2]) {
-            var new_pos = vec3(this.m_position.getX(), this.m_position.getY(), this.m_position.getZ());
-            var new_box = this.m_model.getBox();
-            new_box.setCenter(new_pos);
-            this.m_model.setBox(new_box);
+        if(!equal(this.m_position,this.m_model.getTranslate())) {
+            this.m_model.setTranslate(this.m_position);
         }
     }
 
@@ -816,30 +869,82 @@ class GameObject {
 
     // Update Model according to current position and rotate speed
     updateModel() {
-        var new_angle = this.m_model.getRotateAngle() + this.m_rotateSpeed;
-        var new_pos = vec3(this.m_position.getX(), this.m_position.getY(), this.m_position.getZ());
+        this.m_rotate_angle = this.m_rotate_angle + this.m_rotate_speed;
 
-        this.m_model.setRotateAngle(new_angle);
-        this.m_model.setTranslate(new_pos);
-        this.m_model.updateBox();
+        var pos = this.m_position;
+
+        this.m_model.setRotateAngle(this.m_rotate_angle);
+        this.m_model.setRotateAxis(this.m_rotate_axis);
+        this.m_model.setTranslate(pos);
+
+        this.updateModelMatrix();
+
+        this.updateBox(pos, this.m_model.getScale());
     }
 
-    // Set Object's bounding box.
+    setScale(new_scale) {
+        this.m_model.setScale(new_scale);
+    }
+
+    getScale() {
+        return this.m_model.getScale();
+    }
+
     setBox(new_box) {
-        this.m_model.setBox(new_box);
+        this.m_box = new_box
     }
 
-    // Get Object's bounding box.
     getBox()  {
-        return this.m_model.getBox();
+        return this.m_box;
+    }
+
+    updateBox(new_center, new_scale) {
+        this.m_box.setCenter(new_center);
+        this.m_box.setWidth(new_scale[0]);
+        this.m_box.setHeight(new_scale[1]);
+        this.m_box.setDepth(new_scale[2]);
+    }
+
+    setHierarchyParent(new_hierarchy_parent) {
+        this.m_hierarchy_parent = new_hierarchy_parent;
+    }
+
+    getHierarchyParent() {
+        return this.m_hierarchy_parent;
+    }
+
+    getHierarchyList() {
+        return this.m_hierarchy_list;
+    }
+
+    addHierarchy(object) {
+        if(object.getHierarchyParent() == null) {
+            object.setHierarchyParent(this);
+            this.m_hierarchy_list.push(object);
+            return true;
+        }
+        return false;
+    }
+
+    removeHierarchy(object) {
+        if (this.m_hierarchy_list.includes(object)) {
+            this.m_hierarchy_list = utility.arrayRemove(this.m_hierarchy_list, object);
+            object.setHierarchyParent(null);
+            return true;
+        }
+        return false;
+    }
+
+    // Handle event (default is to ignore everything).
+    // Return 0 if ignored , else 1 if handled.
+    eventHandler(p_e) {
+        return 0;
     }
 
     // Draw GameObject Shape.
     // Return 0 if ok, else -1.
     draw() {
-        this.DM.render(this.m_model.getShape(), this.m_model.getColor(),
-            this.m_model.getTranslate(), this.m_model.getScale(),
-            this.m_model.getRotateAngle(), this.m_model.getRotateAxis());
+        this.DM.render(this);
     }
 }
 
@@ -901,7 +1006,7 @@ class EventCollision extends GameEvent {
     // Default collision event is at (0,0,0) with o1 and o2 NULL.
     constructor(p_o1 = null,
                 p_o2 = null,
-                p = new Vector(0,0,0)) {
+                p = vec3(0,0,0)) {
         super();
         this.m_pos = p;			// Where collision occurred.
         this.m_p_obj1 = p_o1;	// Object moving, causing collision.
@@ -1060,95 +1165,14 @@ class Clock {
     }
 }
 
-class Vector {
-
-    // Create Vector with (x,y).
-    constructor(init_x = 0, init_y = 0, init_z = 0) {
-        this.m_x = init_x;
-        this.m_y = init_y;
-        this.m_z = init_z;
-    }
-
-    // Get/set horizontal component.
-    setX(new_x) {
-        this.m_x = new_x;
-    }
-
-    getX() {
-        return this.m_x;
-    }
-
-    // Get/set vertical component.
-    setY(new_y) {
-        this.m_y = new_y;
-    }
-
-    getY() {
-        return this.m_y;
-    }
-
-    // Get/set depth component.
-    setZ(new_z) {
-        this.m_z = new_z;
-    }
-
-    getZ() {
-        return this.m_z;
-    }
-
-    // Set horizontal, vertical, depth components.
-    setXYZ(new_x, new_y, new_z) {
-        this.m_x = new_x;
-        this.m_y = new_y;
-        this.m_z = new_z;
-    }
-
-    // Return magnitude of vector.
-    getMagnitude() {
-        var mag = Math.sqrt(Math.pow(this.m_x,2)
-            + Math.pow(this.m_y,2)
-            + Math.pow(this.m_z,2) );
-        return mag;
-    }
-
-    // Normalize vector.
-    normalize() {
-        var length = this.getMagnitude();
-        if (length > 0) {
-            this.m_x = this.m_x / length;
-            this.m_y = this.m_y / length;
-            this.m_z = this.m_z / length;
-        }
-        return this;
-    }
-
-    // Scale vector.
-    scale(s) {
-        this.m_x = this.m_x * s;
-        this.m_y = this.m_y * s;
-        this.m_z = this.m_z * s;
-        return this;
-    }
-
-    // Add two Vectors, return new Vector.
-    add(other) {
-        var v = new Vector();					// Create new vector.
-        v.setX(this.getX() + other.getX());		// Add x components.
-        v.setY(this.getY() + other.getY());		// Add y components.
-        v.setZ(this.getZ() + other.getZ());		// Add z components.
-        return v;							    // Return new vector.
-    }
-}
-
 class Model {
     constructor() {
         this.m_shape = null;
         this.m_color = null;
         this.m_translate = vec3(0,0,0);
         this.m_scale = vec3(1,1,1);
-        this.m_rotateAngle = 0;
-        this.m_rotateAxis = vec3(0,1,0);
-        this.m_box = new Box();
+        this.m_rotate_angle = 0;
+        this.m_rotate_axis = vec3(0,1,0);
     }
 
     setShape(new_shape) {
@@ -1184,34 +1208,19 @@ class Model {
     }
 
     setRotateAngle(new_rotateAngle) {
-        this.m_rotateAngle = new_rotateAngle;
+        this.m_rotate_angle = new_rotateAngle;
     }
 
     getRotateAngle() {
-        return this.m_rotateAngle;
+        return this.m_rotate_angle;
     }
 
     setRotateAxis(new_rotateAxis) {
-        this.m_rotateAxis = new_rotateAxis;
+        this.m_rotate_axis = new_rotateAxis;
     }
 
     getRotateAxis() {
-        return this.m_rotateAxis;
-    }
-
-    setBox(new_box) {
-        this.m_box = new_box
-    }
-
-    getBox()  {
-        return this.m_box;
-    }
-
-    updateBox() {
-        this.m_box.setCenter(this.m_translate);
-        this.m_box.setWidth(this.m_scale[0]);
-        this.m_box.setHeight(this.m_scale[1]);
-        this.m_box.setDepth(this.m_scale[2]);
+        return this.m_rotate_axis;
     }
 }
 
@@ -1265,6 +1274,21 @@ class utility {
         return arr.filter(function (ele) {
             return ele != value;
         });
+    }
+
+    static vec3MultMatrix(vec_3, mat) {
+        var mat_vec3 = transpose(mat4(vec_3,1));
+        var mat_mult = mult(mat,mat_vec3);
+        var new_vec3 = vec3(transpose(mat_mult)[0]);
+        return new_vec3;
+    }
+
+    static rotateVec3(vec_3,angle, axis) {
+        var rot = rotate(angle,axis);
+        var mat_vec3 = transpose(mat4(vec_3,1));
+        var mat_rotate = mult(rot,mat_vec3);
+        var new_vec3 = vec3(transpose(mat_rotate)[0]);
+        return new_vec3;
     }
 
     static boxIntersectBox(box1, box2) {
@@ -1418,19 +1442,18 @@ class ObjectForTest extends GameObject {
         this.collision_cooldown = 10;
         this.collision_count = 0;
 
-        this.draw_box = false;
+        this.draw_box = true;
 
-        this.setPosition(pos);
+        this.setInitialPosition(pos);
         this.setVelocity(velo);
         this.setRotateSpeed(rot);
         var model = new Model();
         model.setShape(shape);
         model.setColor(color);
-        model.setBox(utility.cubeBox());
         model.setRotateAngle(angle);
         model.setScale(scale);
-        model.updateBox();
         this.setModel(model);
+        this.setBox(utility.cubeBox());
     }
 
     eventHandler(p_e) {
@@ -1448,7 +1471,7 @@ class ObjectForTest extends GameObject {
 
             if (p_e.getStepCount() % 200 == 0) {
                 LM.writeLog("testObject Rendering: Step " + p_e.getStepCount() + ", reverse direction");
-                this.setDirection(this.getDirection().scale(-1));
+                this.setDirection(scale(-1,this.getDirection()));
             }
         }
 
@@ -1464,7 +1487,7 @@ class ObjectForTest extends GameObject {
                     }
                     if(this.getSolidness() == Solidness.SOFT) {
                         LM.writeLog("Soft object " + this.getId() + " collided, reverse direction");
-                        this.setDirection(this.getDirection().scale(-1));
+                        this.setDirection(scale(-1,this.getDirection()));
                     }
                 }
             }
@@ -1514,6 +1537,8 @@ class ObjectForTest extends GameObject {
             }
         }
 
+        super.eventHandler(p_e);
+
         return 0;
     }
 
@@ -1530,7 +1555,7 @@ class TestCamera extends GameObject {
         super();
         this.m_type = "Test Camera";
         this.setSolidness(Solidness.SPECTRAL);
-        this.setPosition(new Vector(eye[0],eye[1],eye[2]));
+        this.setPosition(eye);
 
         this.following = false;
         this.atFollowing = false;
@@ -1546,7 +1571,7 @@ class TestCamera extends GameObject {
         var model = new Model();
         model.setShape(utility.cube());
         model.setColor(utility.color("gray"));
-        model.setBox(utility.cubeBox());
+        this.setBox(utility.cubeBox());
         this.setModel(model);
     }
 
@@ -1649,7 +1674,7 @@ var gl;
 var program;
 
 var mvMatrix, modelMatrix, viewMatrix, pMatrix, modelViewLoc, projectionLoc;
-var eye = vec3(0.0, 2.0, 4.0);
+var eye = vec3(0.0, 2.0, 8.0);
 var at = vec3(0.0, 0.0, 0.0);
 var up = vec3(0.0, 1.0, 0.0);
 
@@ -1676,9 +1701,9 @@ async function main() {
 
     LM.startUp();
     if (!await testClock()) test = false;
-    if (!testVector()) test = false;
     if (!testGameObject()) test = false;
     if (!testWM()) test = false;
+    if (!testHierarchy()) test = false;
     if (!await testGM()) test = false;
 
     // testDM();
@@ -1738,10 +1763,16 @@ function renderClear() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
-function renderWebGL(shape, color, trans = vec3(), scal = vec3(1, 1, 1),
-                     rot = 0, axis = vec3(0,1,0)) {
+function renderWebGL(object) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
+
+    var shape = object.getModel().getShape();
+    var color = object.getModel().getColor();
+    var trans = object.getModel().getTranslate();
+    var scal = object.getModel().getScale();
+    var rot = object.getModel().getRotateAngle();
+    var axis = object.getModel().getRotateAxis();
 
     function renderThis() {
         viewMatrix = lookAt(eye, at, up);
@@ -1985,153 +2016,6 @@ async function testClock() {
     return test;
 }
 
-function testVector() {
-    var test = true;
-    var testnum = 0;
-
-    //test initialize vector (0,0,0)
-    testnum++;
-    var v1 = new Vector();
-    var expectX = 0;
-    var expectY = 0;
-    var expectZ = 0;
-    LM.writeLog("testVector" + testnum + ": initialize >> " + "(" + v1.getX() + "," + v1.getY()
-        + "," + v1.getZ() + ")");
-    LM.writeLog("testVector" + testnum + ": initialize >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")");
-    if (v1.getX() != expectX || v1.getY() != expectY || v1.getZ() != expectZ) {
-        LM.writeLog("testVector" + testnum + ": initialize failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": initialize success");
-    }
-
-    //test create vector (1,2,2)
-    testnum++;
-    var v2 = new Vector(1, 2, 2);
-    var expectX = 1;
-    var expectY = 2;
-    var expectZ = 2;
-    LM.writeLog("testVector" + testnum + ": initialize w/ parameters >> " + "(" + v2.getX() + "," + v2.getY()
-        + "," + v2.getZ() + ")");
-    LM.writeLog("testVector" + testnum + ": initialize w/ parameters  >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")");
-    if (v2.getX() != expectX || v2.getY() != expectY || v2.getZ() != expectZ) {
-        LM.writeLog("testVector" + testnum + ": initialize w/ parameters  failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": initialize w/ parameters  success");
-    }
-
-    //test get (1,2,2) magnitude = 3
-    testnum++;
-    var expectMag = 3;
-    LM.writeLog("testVector" + testnum + ": getMagnitude >> " + v2.getMagnitude());
-    LM.writeLog("testVector" + testnum + ": getMagnitude >> expect " + expectMag);
-    if (v2.getMagnitude() != expectMag) {
-        LM.writeLog("testVector" + testnum + ": getMagnitude failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": getMagnitude success");
-    }
-
-    //test set (1,2,2) to (2,3,6), magnitude = 7
-    testnum++;
-    v2.setX(2);
-    v2.setY(3);
-    v2.setZ(6);
-    var expectX = 2;
-    var expectY = 3;
-    var expectZ = 6;
-    var expectMag = 7;
-    LM.writeLog("testVector" + testnum + ": setX/setY/setZ >> " + "(" + v2.getX() + "," + v2.getY()
-        + "," + v2.getZ() + ")" + "," + v2.getMagnitude());
-    LM.writeLog("testVector" + testnum + ": setX/setY/setZ >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")" + "," + expectMag);
-    if (v2.getX() != expectX || v2.getY() != expectY
-        || v2.getZ() != expectZ || v2.getMagnitude() != expectMag) {
-        LM.writeLog("testVector" + testnum + ": setX/setY/setZ failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": setX/setY/setZ success");
-    }
-
-    //test set (0,0,0) to (-1,1,2)
-    v1.setXYZ(-1, 1,2);
-    testnum++;
-    var expectX = -1;
-    var expectY = 1;
-    var expectZ = 2;
-    LM.writeLog("testVector" + testnum + ": setXYZ >> " + "(" + v1.getX() + "," + v1.getY()
-        + "," + v1.getZ() + ")");
-    LM.writeLog("testVector" + testnum + ": setXYZ >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")");
-    if (v1.getX() != expectX || v1.getY() != expectY || v1.getZ() != expectZ) {
-        LM.writeLog("testVector" + testnum + ": setXYZ failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": setXYZ success");
-    }
-
-    //test (2,3,6) + (-1,1,2) = (1,4,8), magnitude = 9
-    testnum++;
-    v2 = v2.add(v1);
-    var expectX = 1;
-    var expectY = 4;
-    var expectZ = 8;
-    var expectMag = 9;
-    LM.writeLog("testVector" + testnum + ": add >> " + "(" + v2.getX() + "," + v2.getY()
-        + "," + v2.getZ() + ")" + "," + v2.getMagnitude());
-    LM.writeLog("testVector" + testnum + ": add >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")" + "," + expectMag);
-    if (v2.getX() != expectX || v2.getY() != expectY
-        || v2.getZ() != expectZ || v2.getMagnitude() != expectMag) {
-        LM.writeLog("testVector" + testnum + ": add failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": add success");
-    }
-
-    //test (1,4,8)*10 = (10,40,80), magnitude 90
-    testnum++;
-    v2.scale(10);
-    var expectX = 10;
-    var expectY = 40;
-    var expectZ = 80;
-    var expectMag = 90;
-    LM.writeLog("testVector" + testnum + ": scale >> " + "(" + v2.getX() + "," + v2.getY()
-        + "," + v2.getZ() + ")" + "," + v2.getMagnitude());
-    LM.writeLog("testVector" + testnum + ": scale >> expect " + "(" + expectX + "," + expectY
-        + "," + expectZ + ")" + "," + expectMag);
-    if (v2.getX() != expectX || v2.getY() != expectY
-        || v2.getZ() != expectZ || v2.getMagnitude() != expectMag) {
-        LM.writeLog("testVector" + testnum + ": scale failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": scale success");
-    }
-
-    //test normalize, magnitude 1
-    testnum++;
-    v2.normalize();
-    var expectMag = 1;
-    LM.writeLog("testVector" + testnum + ": normalize >> " + v2.getMagnitude());
-    LM.writeLog("testVector" + testnum + ": normalize >> expect " + expectMag);
-    if (v2.getMagnitude() != expectMag) {
-        LM.writeLog("testVector" + testnum + ": normalize failed");
-        test = false;
-    } else {
-        LM.writeLog("testVector" + testnum + ": normalize success");
-    }
-
-    if (test)
-        LM.writeLog("testVector: SUCCESS");
-    else
-        LM.writeLog("testVector: FAILED");
-
-    return test;
-}
-
 function testGameObject() {
     var test = true;
     var testnum = 0;
@@ -2145,13 +2029,13 @@ function testGameObject() {
     var expectY = 0;
     var expectZ = 0;
     LM.writeLog("testObject" + testnum + ": initialize >> " + o.getId() + "," + o.getType() + ","
-        + "(" + o.getPosition().getX() + "," + o.getPosition().getY()
-        + "," + o.getPosition().getZ() + ")");
+        + "(" + o.getPosition()[0] + "," + o.getPosition()[1]
+        + "," + o.getPosition()[2] + ")");
     LM.writeLog("testObject" + testnum + ": initialize >> expect " + expectId + "," + expectType + ","
         + "(" + expectX + "," + expectY + "," + expectZ + ")");
     if (o.getId() != expectId || o.getType() != expectType ||
-        o.getPosition().getX() != expectX || o.getPosition().getY() != expectY
-        || o.getPosition().getZ() != expectZ) {
+        o.getPosition()[0] != expectX || o.getPosition()[1] != expectY
+        || o.getPosition()[2] != expectZ) {
         LM.writeLog("testObject" + testnum + ": initialize failed");
         test = false;
     } else {
@@ -2186,16 +2070,16 @@ function testGameObject() {
 
     //test set position
     testnum++;
-    o.setPosition(new Vector(1, 2,3));
+    o.setPosition(vec3(1, 2,3));
     var expectX = 1;
     var expectY = 2;
     var expectZ = 3;
-    LM.writeLog("testObject" + testnum + ": setPosition >> " + "(" + o.getPosition().getX()
-        + "," + o.getPosition().getY()  + "," + o.getPosition().getZ() + ")");
+    LM.writeLog("testObject" + testnum + ": setPosition >> " + "(" + o.getPosition()[0]
+        + "," + o.getPosition()[1]  + "," + o.getPosition()[2] + ")");
     LM.writeLog("testObject" + testnum + ": setPosition >> expect " + "(" + expectX + "," + expectY
         + "," + expectZ + ")");
-    if (o.getPosition().getX() != expectX || o.getPosition().getY() != expectY
-        || o.getPosition().getZ() != expectZ) {
+    if (o.getPosition()[0] != expectX || o.getPosition()[1] != expectY
+        || o.getPosition()[2] != expectZ) {
         LM.writeLog("testObject" + testnum + ": setPosition failed");
         test = false;
     } else {
@@ -2232,16 +2116,16 @@ function testGameObject() {
 
     //test set direction
     testnum++;
-    o.setDirection(new Vector(1, 0,-1));
+    o.setDirection(vec3(1, 0,-1));
     var expectX = 1;
     var expectY = 0;
     var expectZ = -1;
-    LM.writeLog("testObject" + testnum + ": setDirection >> " + "(" + o.getDirection().getX()
-        + "," + o.getDirection().getY() + "," + o.getDirection().getZ() + ")");
+    LM.writeLog("testObject" + testnum + ": setDirection >> " + "(" + o.getDirection()[0]
+        + "," + o.getDirection()[1] + "," + o.getDirection()[2] + ")");
     LM.writeLog("testObject" + testnum + ": setDirection >> expect " + "(" + expectX + "," + expectY
         + "," + expectZ + ")");
-    if (o.getDirection().getX() != expectX || o.getDirection().getY() != expectY
-        || o.getDirection().getZ() != expectZ) {
+    if (o.getDirection()[0] != expectX || o.getDirection()[1] != expectY
+        || o.getDirection()[2] != expectZ) {
         LM.writeLog("testObject" + testnum + ": setDirection failed");
         test = false;
     } else {
@@ -2250,16 +2134,16 @@ function testGameObject() {
 
     //test set velocity
     testnum++;
-    o.setVelocity(new Vector(2, 3, 6));
+    o.setVelocity(vec3(2, 3, 6));
     var expectX = 2;
     var expectY = 3;
     var expectZ = 6;
-    LM.writeLog("testObject" + testnum + ": setVelocity >> " + "(" + o.getVelocity().getX()
-        + "," + o.getVelocity().getY() + "," + o.getVelocity().getZ() + ")");
+    LM.writeLog("testObject" + testnum + ": setVelocity >> " + "(" + o.getVelocity()[0]
+        + "," + o.getVelocity()[1] + "," + o.getVelocity()[2] + ")");
     LM.writeLog("testObject" + testnum + ": setVelocity >> expect " + "(" + expectX + "," + expectY
         + "," + expectZ + ")");
-    if (o.getVelocity().getX() != expectX || o.getVelocity().getY() != expectY
-        || o.getVelocity().getZ() != expectZ) {
+    if (o.getVelocity()[0] != expectX || o.getVelocity()[1] != expectY
+        || o.getVelocity()[2] != expectZ) {
         LM.writeLog("testObject" + testnum + ": setVelocity failed");
         test = false;
     } else {
@@ -2273,12 +2157,12 @@ function testGameObject() {
     var expectX = 3;
     var expectY = 5;
     var expectZ = 9;
-    LM.writeLog("testObject" + testnum + ": predictPosition >> " + "(" + predict.getX()
-        + "," + predict.getY() + "," + predict.getZ() + ")");
+    LM.writeLog("testObject" + testnum + ": predictPosition >> " + "(" + predict[0]
+        + "," + predict[1] + "," + predict[2] + ")");
     LM.writeLog("testObject" + testnum + ": predictPosition >> expect " + "(" + expectX + "," + expectY
         + "," + expectZ + ")");
-    if (predict.getX() != expectX || predict.getY() != expectY
-        || predict.getZ() != expectZ) {
+    if (predict[0] != expectX || predict[1] != expectY
+        || predict[2] != expectZ) {
         LM.writeLog("testObject" + testnum + ": predictPosition failed");
         test = false;
     } else {
@@ -2368,6 +2252,73 @@ function testGameObject() {
     return test;
 }
 
+function testHierarchy() {
+    var test = true;
+    var testnum = 0;
+
+    testnum++;
+    //test add hierarchy
+    var o1 = new GameObject();
+    var o1_1 = new GameObject();
+    o1.addHierarchy(o1_1);
+    var expectChild = 5;
+    var expectParent = 4;
+    LM.writeLog("testHierarchy" + testnum + ": addHierarchy >> " + expectParent
+        + "," + expectChild);
+    LM.writeLog("testHierarchy" + testnum + ": addHierarchy >> expect " + o1_1.getHierarchyParent().getId()
+        + "," + o1.getHierarchyList()[0].getId());
+    if (o1 != o1_1.getHierarchyParent() || o1_1 != o1.getHierarchyList()[0]
+        || o1.getHierarchyParent() != null) {
+        LM.writeLog("testHierarchy" + testnum + ": addHierarchy failed");
+        test = false;
+    } else {
+        LM.writeLog("testHierarchy" + testnum + ": addHierarchy success");
+    }
+
+    testnum++;
+    //test remove hierarchy
+    o1.removeHierarchy(o1_1);
+    var expectChild = 0;
+    var expectParent = null;
+    LM.writeLog("testHierarchy" + testnum + ": removeHierarchy >> " + expectParent
+        + "," + expectChild);
+    LM.writeLog("testHierarchy" + testnum + ": removeHierarchy >> expect " + o1_1.getHierarchyParent()
+        + "," + o1.getHierarchyList().length);
+    if (o1_1.getHierarchyParent() != expectParent || o1.getHierarchyList().length != expectChild
+        || o1.getHierarchyParent() != null) {
+        LM.writeLog("testHierarchy" + testnum + ": removeHierarchy failed");
+        test = false;
+    } else {
+        LM.writeLog("testHierarchy" + testnum + ": removeHierarchy success");
+    }
+
+    testnum++;
+    //test move hierarchy
+    o1.addHierarchy(o1_1);
+    o1.setVelocity(vec3(0,0,1));
+    o1_1.setPosition(vec3(1,1,0));
+    o1_1.setVelocity(vec3(1,1,0));
+    var predict1 = o1.predictPosition();
+    var predict2 = o1_1.predictPosition();
+    var expectPredict1 = vec3(0,0,1);
+    var expectPredict2 = vec3(2,2,1);
+    LM.writeLog("testHierarchy" + testnum + ": move hierarchy >> "
+        + "(" + predict1[0] + "," + predict1[1]  + "," + predict1[2] + ")"
+        + "(" + predict2[0] + "," + predict2[1]  + "," + predict2[2] + ")");
+    LM.writeLog("testHierarchy" + testnum + ": move hierarchy >> expect "
+        + "(" + expectPredict1[0] + "," + expectPredict1[1]  + "," + expectPredict1[2] + ")"
+        + "(" + expectPredict2[0] + "," + expectPredict2[1]  + "," + expectPredict2[2] + ")");
+    if (!equal(predict1,expectPredict1) || !equal(predict2,expectPredict2)) {
+        LM.writeLog("testHierarchy" + testnum + ": move hierarchy failed");
+        test = false;
+    } else {
+        LM.writeLog("testHierarchy" + testnum + ": move hierarchy success");
+    }
+
+    return test;
+
+}
+
 function testWM() {
     var test = true;
     var testnum = 0;
@@ -2408,16 +2359,16 @@ function testWM() {
 
     //test move object
     testnum++;
-    WM.moveObject(o, new Vector(1,2,3));
+    WM.moveObject(o, vec3(1,2,3));
     var expectX = 1;
     var expectY = 2;
     var expectZ = 3;
-    LM.writeLog("testWM" + testnum + ": move object >> " + "(" + o.getPosition().getX()
-        + "," + o.getPosition().getY() + "," + o.getPosition().getZ() + ")");
+    LM.writeLog("testWM" + testnum + ": move object >> " + "(" + o.getPosition()[0]
+        + "," + o.getPosition()[1] + "," + o.getPosition()[2] + ")");
     LM.writeLog("testWM" + testnum + ": move object >> expect " + "(" + expectX
         + "," +expectY + "," + expectZ + ")");
-    if (o.getPosition().getX() != expectX || o.getPosition().getY() != expectY
-        || o.getPosition().getZ() != expectZ) {
+    if (o.getPosition()[0] != expectX || o.getPosition()[1] != expectY
+        || o.getPosition()[2] != expectZ) {
         LM.writeLog("testWM" + testnum + ": move object failed");
         test = false;
     } else {
@@ -2477,48 +2428,10 @@ async function testGM() {
         return false;
     }
 
-
     //test frontend display
-    var object = new ObjectForTest(
-        new Vector(-1.1,0.6,0.1),
-        new Vector(-0.01,0,0),
-        1,
-        utility.cube(),
-        utility.color("red"),
-        45,
-        vec3(0.5,0.5,0.5));
-
-    var object2 = new ObjectForTest(
-        new Vector(1,0.5,0),
-        new Vector(0.01,0,0),
-        -1,
-        utility.cube(),
-        utility.color("blue"),
-        60,
-        vec3(0.5,0.5,0.5));
-
-    var object3 = new ObjectForTest(
-        new Vector(-1,-0.5,0.1),
-        new Vector(-0.01,0,0),
-        1,
-        utility.cube(),
-        utility.color("green"),
-        0,
-        vec3(0.5,0.5,0.5));
-    object3.setSolidness(Solidness.SOFT);
-
-    var object4 = new ObjectForTest(
-        new Vector(1,-0.5,0),
-        new Vector(0.01,0,0),
-        -1,
-        utility.cube(),
-        utility.color("yellow"),
-        45,
-        vec3(0.5,0.5,0.5));
-    object4.setSolidness(Solidness.SOFT);
-
     var camera = new TestCamera();
-    camera.setAtFollowing(object4);
+    setup2();
+    setup3();
 
     await GM.run();
 
@@ -2543,4 +2456,94 @@ async function testGM() {
     GM.shutDown();
 
     return test;
+}
+
+function setup1() {
+    var object = new ObjectForTest(
+        vec3(-2.0,1.0,0.0),
+        vec3(0.01,0.0,0.0),
+        1,
+        utility.cube(),
+        utility.color("red"),
+        45,
+        vec3(1,1,1));
+
+    var object2 = new ObjectForTest(
+        vec3(2.0,1.0,0.0),
+        vec3(-0.01,0.0,0.0),
+        -1,
+        utility.cube(),
+        utility.color("blue"),
+        60,
+        vec3(1,1,1));
+
+    var object3 = new ObjectForTest(
+        vec3(-2.0,-1.0,0),
+        vec3(0.01,0.0,0.0),
+        1,
+        utility.cube(),
+        utility.color("green"),
+        0,
+        vec3(1,1,1));
+    object3.setSolidness(Solidness.SOFT);
+
+    var object4 = new ObjectForTest(
+        vec3(2.0,-1.0,0.0),
+        vec3(-0.01,0.0,0.0),
+        -1,
+        utility.cube(),
+        utility.color("yellow"),
+        45,
+        vec3(1,1,1));
+    object4.setSolidness(Solidness.SOFT);
+
+    var camera = new TestCamera();
+    camera.setAtFollowing(object4);
+}
+
+function setup2() {
+    var object = new ObjectForTest(
+        vec3(-1.0,1.0,0.0),
+        vec3(-0.01,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+    object.setSolidness(Solidness.SPECTRAL);
+
+    var object2 = new ObjectForTest(
+        vec3(0.0,1.0,0.0),
+        vec3(0.0,-0.01,0.0),
+        0,
+        utility.cube(),
+        utility.color("blue"),
+        0,
+        vec3(1.0,1.0,1.0));
+    object.addHierarchy(object2);
+    object2.setSolidness(Solidness.SPECTRAL);
+}
+
+function setup3() {
+    var object3 = new ObjectForTest(
+        vec3(2.0,-1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.cube(),
+        utility.color("yellow"),
+        0,
+        vec3(1.0,1.0,1.0));
+    object3.setRotateAxis(vec3(0.0,0.0,1.0));
+    object3.setSolidness(Solidness.SPECTRAL);
+
+    var object4 = new ObjectForTest(
+        vec3(0.0,-1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("green"),
+        0,
+        vec3(1.0,1.0,1.0));
+    object3.addHierarchy(object4);
+    object4.setSolidness(Solidness.SPECTRAL);
 }
