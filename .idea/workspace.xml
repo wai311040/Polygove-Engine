@@ -21,7 +21,6 @@
   <component name="ChangeListManager">
     <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug.log" beforeDir="false" afterPath="$PROJECT_DIR$/debug.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/polygove.js" beforeDir="false" afterPath="$PROJECT_DIR$/polygove.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -82,7 +81,7 @@
       <workItem from="1604344289051" duration="1257000" />
       <workItem from="1604345893713" duration="17591000" />
       <workItem from="1605129124231" duration="23762000" />
-      <workItem from="1605551953070" duration="69233000" />
+      <workItem from="1605551953070" duration="77393000" />
     </task>
     <task id="LOCAL-00001" summary="Update collision">
       <created>1605831266387</created>
@@ -105,7 +104,14 @@
       <option name="project" value="LOCAL" />
       <updated>1606724129977</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Hierarchy">
+      <created>1607339056264</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1607339056264</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -151,13 +157,14 @@
     <MESSAGE value="Update collision" />
     <MESSAGE value="update collision + add camera" />
     <MESSAGE value="more camera tests" />
-    <option name="LAST_COMMIT_MESSAGE" value="more camera tests" />
+    <MESSAGE value="Hierarchy" />
+    <option name="LAST_COMMIT_MESSAGE" value="Hierarchy" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="264" y="0" key="CommitChangelistDialog2" timestamp="1606724129383">
+    <state x="264" y="0" key="CommitChangelistDialog2" timestamp="1607339055690">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
-    <state x="264" y="0" key="CommitChangelistDialog2/0.0.1280.680@0.0.1280.680" timestamp="1606724129383" />
+    <state x="264" y="0" key="CommitChangelistDialog2/0.0.1280.680@0.0.1280.680" timestamp="1607339055690" />
     <state x="93" y="93" width="1095" height="495" key="DiffContextDialog" timestamp="1606533265434">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
@@ -174,10 +181,10 @@
       <screen x="0" y="0" width="1280" height="680" />
     </state>
     <state x="479" y="46" key="Github.UntrackedFilesDialog/0.0.1280.680@0.0.1280.680" timestamp="1605554415301" />
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2" timestamp="1606724135759">
+    <state x="233" y="74" key="Vcs.Push.Dialog.v2" timestamp="1607339072143">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2/0.0.1280.680@0.0.1280.680" timestamp="1606724135759" />
+    <state x="233" y="74" key="Vcs.Push.Dialog.v2/0.0.1280.680@0.0.1280.680" timestamp="1607339072143" />
     <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1605501733834">
       <screen x="0" y="0" width="1280" height="680" />
     </state>

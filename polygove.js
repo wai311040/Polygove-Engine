@@ -1322,7 +1322,7 @@ class utility {
         }
     }
 
-    static cubeBox() {
+    static unitBox() {
         var center = vec3(0,0,0);
         var width = 1;
         var height = 1;
@@ -1330,6 +1330,52 @@ class utility {
 
         var box = new Box(center,width,height,depth);
         return box;
+    }
+
+    static pyramid(base= 3) {
+        var verts = [];
+        var normals = [];
+
+        var faces = [];
+        if (base == 3) {
+            faces.push(this.triangle(this.vertices[4], this.vertices[12], this.vertices[11]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[11], this.vertices[4]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[12], this.vertices[11]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[4], this.vertices[12]));
+        }
+        if(base == 4) {
+            faces.push(this.quad(3, 0, 4, 7));
+            faces.push(this.triangle(this.vertices[8], this.vertices[0], this.vertices[3]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[3], this.vertices[7]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[7], this.vertices[4]));
+            faces.push(this.triangle(this.vertices[8], this.vertices[4], this.vertices[0]));
+        }
+
+        for (var i = 0; i < faces.length; i++) {
+            verts = verts.concat(faces[i][0]);
+            normals = normals.concat(faces[i][1]);
+        }
+
+        return [verts, normals];
+    }
+
+    static prism() {
+        var verts = [];
+        var normals = [];
+
+        var faces = [];
+        faces.push(this.triangle(this.vertices[5], this.vertices[10], this.vertices[9]));
+        faces.push(this.triangle(this.vertices[4], this.vertices[11], this.vertices[12]));
+        faces.push(this.quad(4, 5, 9, 11));
+        faces.push(this.quad(11, 9, 10, 12));
+        faces.push(this.quad(12, 10, 5, 4));
+
+        for (var i = 0; i < faces.length; i++) {
+            verts = verts.concat(faces[i][0]);
+            normals = normals.concat(faces[i][1]);
+        }
+
+        return [verts, normals];
     }
 
     static cube() {
@@ -1352,24 +1398,29 @@ class utility {
         return [verts, normals];
     }
 
+    static vertices = [
+        vec4(-0.5, -0.5, 0.5, 1.0),
+        vec4(-0.5, 0.5, 0.5, 1.0),
+        vec4(0.5, 0.5, 0.5, 1.0),
+        vec4(0.5, -0.5, 0.5, 1.0),
+        vec4(-0.5, -0.5, -0.5, 1.0),         // also triangle bottom 1
+        vec4(-0.5, 0.5, -0.5, 1.0),         // also triangle top 1
+        vec4(0.5, 0.5, -0.5, 1.0),
+        vec4(0.5, -0.5, -0.5, 1.0),
+        vec4(0.0, 0.5, 0.0, 1.0),           // center top
+        vec4(0.5, 0.5, -0.23, 1.0),         // triangle top 2
+        vec4(-0.23, 0.5, 0.5, 1.0),        // triangle top 3
+        vec4(0.5, -0.5, -0.23, 1.0),        // triangle bottom 2
+        vec4(-0.23, -0.5, 0.5, 1.0),        // triangle bottom 3
+    ];
+
     //helper function to generate cube vertices
     static quad(a, b, c, d) {
         var verts = [];
         var normals = [];
 
-        var vertices = [
-            vec4(-0.5, -0.5, 0.5, 1.0),
-            vec4(-0.5, 0.5, 0.5, 1.0),
-            vec4(0.5, 0.5, 0.5, 1.0),
-            vec4(0.5, -0.5, 0.5, 1.0),
-            vec4(-0.5, -0.5, -0.5, 1.0),
-            vec4(-0.5, 0.5, -0.5, 1.0),
-            vec4(0.5, 0.5, -0.5, 1.0),
-            vec4(0.5, -0.5, -0.5, 1.0)
-        ];
-
-        var tri1 = this.triangle(vertices[a], vertices[b], vertices[c]);
-        var tri2 = this.triangle(vertices[a], vertices[c], vertices[d]);
+        var tri1 = this.triangle(this.vertices[a], this.vertices[b], this.vertices[c]);
+        var tri2 = this.triangle(this.vertices[a], this.vertices[c], this.vertices[d]);
 
         verts = verts.concat(tri1[0]);
         verts = verts.concat(tri2[0]);
@@ -1394,6 +1445,78 @@ class utility {
         normals.push(c[0], c[1], c[2], 0.0);
 
         return [verts, normals];
+    }
+
+    static numTimesToSubdivide = 5;
+
+    //generate sphere vertices from subdivided tetrahedron
+    static sphere() {
+        var va = vec4(0.0, 0.0, -1.0,1);
+        var vb = vec4(-0.816497, -0.471405, 0.333333, 1);
+        var vc = vec4(0.0, 0.942809, 0.333333, 1);
+        var vd = vec4(0.816497, -0.471405, 0.333333,1);
+
+        var verts = [];
+        var normals = [];
+
+        var tetr = this.tetrahedron(va, vb, vc, vd, this.numTimesToSubdivide);
+        verts = verts.concat(tetr[0]);
+        normals = normals.concat(tetr[1]);
+
+        return [verts,normals];
+    }
+
+    //generate tetrahedron vertices, can be subdivided
+    static tetrahedron(a, b, c, d, n) {
+        var verts = [];
+        var normals = [];
+
+        var divideT = [];
+        divideT.push(this.divideTriangle(a, b, c, n));
+        divideT.push(this.divideTriangle(a, c, d, n));
+        divideT.push(this.divideTriangle(a, d, b, n));
+        divideT.push(this.divideTriangle(d, c, b, n));
+
+        for (var i = 0; i < divideT.length; i++) {
+            verts = verts.concat(divideT[i][0]);
+            normals = normals.concat(divideT[i][1]);
+        }
+
+        return [verts,normals];
+    }
+
+    //recursively subdivide triangle, helper function to subdivide tetrahedron
+    static divideTriangle(a, b, c, count) {
+        var verts = [];
+        var normals = [];
+        if ( count > 0 ) {
+
+            var ab = mix( a, b, 0.5);
+            var ac = mix( a, c, 0.5);
+            var bc = mix( b, c, 0.5);
+
+            ab = normalize(ab, true);
+            ac = normalize(ac, true);
+            bc = normalize(bc, true);
+
+            var divideT = [];
+            divideT.push(this.divideTriangle( a, ab, ac, count - 1));
+            divideT.push(this.divideTriangle( ab, b, bc, count - 1));
+            divideT.push(this.divideTriangle( bc, c, ac, count - 1));
+            divideT.push(this.divideTriangle( ab, bc, ac, count - 1));
+
+            for (var i = 0; i < divideT.length; i++) {
+                verts = verts.concat(divideT[i][0]);
+                normals = normals.concat(divideT[i][1]);
+            }
+        }
+        else {
+            var tri = this.triangle(a, b, c);
+            verts = verts.concat(tri[0]);
+            normals = normals.concat(tri[1]);
+        }
+
+        return [verts,normals];
     }
 
     static color(color) {
@@ -1442,7 +1565,7 @@ class ObjectForTest extends GameObject {
         this.collision_cooldown = 10;
         this.collision_count = 0;
 
-        this.draw_box = true;
+        this.draw_box = false;
 
         this.setInitialPosition(pos);
         this.setVelocity(velo);
@@ -1453,7 +1576,7 @@ class ObjectForTest extends GameObject {
         model.setRotateAngle(angle);
         model.setScale(scale);
         this.setModel(model);
-        this.setBox(utility.cubeBox());
+        this.setBox(utility.unitBox());
     }
 
     eventHandler(p_e) {
@@ -1571,7 +1694,7 @@ class TestCamera extends GameObject {
         var model = new Model();
         model.setShape(utility.cube());
         model.setColor(utility.color("gray"));
-        this.setBox(utility.cubeBox());
+        this.setBox(utility.unitBox());
         this.setModel(model);
     }
 
@@ -1701,9 +1824,9 @@ async function main() {
 
     LM.startUp();
     if (!await testClock()) test = false;
-    if (!testGameObject()) test = false;
+    // if (!testGameObject()) test = false;
     if (!testWM()) test = false;
-    if (!testHierarchy()) test = false;
+    // if (!testHierarchy()) test = false;
     if (!await testGM()) test = false;
 
     // testDM();
@@ -2430,8 +2553,7 @@ async function testGM() {
 
     //test frontend display
     var camera = new TestCamera();
-    setup2();
-    setup3();
+    setup4();
 
     await GM.run();
 
@@ -2514,7 +2636,7 @@ function setup2() {
 
     var object2 = new ObjectForTest(
         vec3(0.0,1.0,0.0),
-        vec3(0.0,-0.01,0.0),
+        vec3(0.0,-0.005,0.0),
         0,
         utility.cube(),
         utility.color("blue"),
@@ -2526,8 +2648,8 @@ function setup2() {
 
 function setup3() {
     var object3 = new ObjectForTest(
-        vec3(2.0,-1.0,0.0),
-        vec3(0.0,0.0,0.0),
+        vec3(1.0,-1.5,0.0),
+        vec3(0.01,0.0,0.0),
         1,
         utility.cube(),
         utility.color("yellow"),
@@ -2546,4 +2668,43 @@ function setup3() {
         vec3(1.0,1.0,1.0));
     object3.addHierarchy(object4);
     object4.setSolidness(Solidness.SPECTRAL);
+}
+
+function setup4() {
+    var object = new ObjectForTest(
+        vec3(-1.5,1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.pyramid(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var object2 = new ObjectForTest(
+        vec3(0.0,1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.pyramid(4),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var object3 = new ObjectForTest(
+        vec3(-1.5,-1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.prism(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var object4 = new ObjectForTest(
+        vec3(0.0,-1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.sphere(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
 }
