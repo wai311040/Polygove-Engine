@@ -1344,7 +1344,7 @@ class utility {
             faces.push(this.triangle(this.vertices[8], this.vertices[4], this.vertices[12]));
         }
         if(base == 4) {
-            faces.push(this.quad(3, 0, 4, 7));
+            faces.push(this.quadSet(3, 0, 4, 7));
             faces.push(this.triangle(this.vertices[8], this.vertices[0], this.vertices[3]));
             faces.push(this.triangle(this.vertices[8], this.vertices[3], this.vertices[7]));
             faces.push(this.triangle(this.vertices[8], this.vertices[7], this.vertices[4]));
@@ -1366,9 +1366,9 @@ class utility {
         var faces = [];
         faces.push(this.triangle(this.vertices[5], this.vertices[10], this.vertices[9]));
         faces.push(this.triangle(this.vertices[4], this.vertices[11], this.vertices[12]));
-        faces.push(this.quad(4, 5, 9, 11));
-        faces.push(this.quad(11, 9, 10, 12));
-        faces.push(this.quad(12, 10, 5, 4));
+        faces.push(this.quadSet(4, 5, 9, 11));
+        faces.push(this.quadSet(11, 9, 10, 12));
+        faces.push(this.quadSet(12, 10, 5, 4));
 
         for (var i = 0; i < faces.length; i++) {
             verts = verts.concat(faces[i][0]);
@@ -1383,12 +1383,12 @@ class utility {
         var normals = [];
 
         var quads = [];
-        quads.push(this.quad(1, 0, 3, 2));
-        quads.push(this.quad(2, 3, 7, 6));
-        quads.push(this.quad(3, 0, 4, 7));
-        quads.push(this.quad(6, 5, 1, 2));
-        quads.push(this.quad(4, 5, 6, 7));
-        quads.push(this.quad(5, 4, 0, 1));
+        quads.push(this.quadSet(1, 0, 3, 2));
+        quads.push(this.quadSet(2, 3, 7, 6));
+        quads.push(this.quadSet(3, 0, 4, 7));
+        quads.push(this.quadSet(6, 5, 1, 2));
+        quads.push(this.quadSet(4, 5, 6, 7));
+        quads.push(this.quadSet(5, 4, 0, 1));
 
         for (var i = 0; i < quads.length; i++) {
             verts = verts.concat(quads[i][0]);
@@ -1415,12 +1415,16 @@ class utility {
     ];
 
     //helper function to generate cube vertices
+    static quadSet(a, b, c, d) {
+        return this.quad(this.vertices[a], this.vertices[b], this.vertices[c], this.vertices[d]);
+    }
+
     static quad(a, b, c, d) {
         var verts = [];
         var normals = [];
 
-        var tri1 = this.triangle(this.vertices[a], this.vertices[b], this.vertices[c]);
-        var tri2 = this.triangle(this.vertices[a], this.vertices[c], this.vertices[d]);
+        var tri1 = this.triangle(a, b, c);
+        var tri2 = this.triangle(a, c, d);
 
         verts = verts.concat(tri1[0]);
         verts = verts.concat(tri2[0]);
@@ -1447,76 +1451,137 @@ class utility {
         return [verts, normals];
     }
 
-    static numTimesToSubdivide = 5;
+    static sphere(radius = 0.5, sectorCount = 36, stackCount = 18) {
 
-    //generate sphere vertices from subdivided tetrahedron
-    static sphere() {
-        var va = vec4(0.0, 0.0, -1.0,1);
-        var vb = vec4(-0.816497, -0.471405, 0.333333, 1);
-        var vc = vec4(0.0, 0.942809, 0.333333, 1);
-        var vd = vec4(0.816497, -0.471405, 0.333333,1);
-
+        var i, j, z, xy;
         var verts = [];
         var normals = [];
 
-        var tetr = this.tetrahedron(va, vb, vc, vd, this.numTimesToSubdivide);
-        verts = verts.concat(tetr[0]);
-        normals = normals.concat(tetr[1]);
+        var sectorStep = 2 * Math.PI / sectorCount;
+        var stackStep = Math.PI / stackCount;
+        var sectorAngle, stackAngle;
+        var tmpVertices = [];
 
-        return [verts,normals];
-    }
+        // compute all vertices first, each vertex contains (x,y,z)
+        for (i = 0; i <= stackCount; ++i) {
+            stackAngle = Math.PI / 2 - i * stackStep;       // starting from pi/2 to -pi/2
+            xy = radius * Math.cos(stackAngle);             // r * cos(u)
+            z = radius * Math.sin(stackAngle);              // r * sin(u)
 
-    //generate tetrahedron vertices, can be subdivided
-    static tetrahedron(a, b, c, d, n) {
-        var verts = [];
-        var normals = [];
-
-        var divideT = [];
-        divideT.push(this.divideTriangle(a, b, c, n));
-        divideT.push(this.divideTriangle(a, c, d, n));
-        divideT.push(this.divideTriangle(a, d, b, n));
-        divideT.push(this.divideTriangle(d, c, b, n));
-
-        for (var i = 0; i < divideT.length; i++) {
-            verts = verts.concat(divideT[i][0]);
-            normals = normals.concat(divideT[i][1]);
+            var stackVertices = [];
+            // add (sectorCount+1) vertices per stack
+            for (j = 0; j <= sectorCount; ++j) {
+                sectorAngle = j * sectorStep;                       // starting from 0 to 2pi
+                var vertex = vec4(xy * Math.cos(sectorAngle),       // x = r * cos(u) * cos(v)
+                    xy * Math.sin(sectorAngle),                     // y = r * cos(u) * sin(v)
+                    z,                                              // z = r * sin(u)
+                    1.0);
+                stackVertices.push(vertex);
+            }
+            tmpVertices.push(stackVertices);
         }
 
-        return [verts,normals];
-    }
-
-    //recursively subdivide triangle, helper function to subdivide tetrahedron
-    static divideTriangle(a, b, c, count) {
-        var verts = [];
-        var normals = [];
-        if ( count > 0 ) {
-
-            var ab = mix( a, b, 0.5);
-            var ac = mix( a, c, 0.5);
-            var bc = mix( b, c, 0.5);
-
-            ab = normalize(ab, true);
-            ac = normalize(ac, true);
-            bc = normalize(bc, true);
-
-            var divideT = [];
-            divideT.push(this.divideTriangle( a, ab, ac, count - 1));
-            divideT.push(this.divideTriangle( ab, b, bc, count - 1));
-            divideT.push(this.divideTriangle( bc, c, ac, count - 1));
-            divideT.push(this.divideTriangle( ab, bc, ac, count - 1));
-
-            for (var i = 0; i < divideT.length; i++) {
-                verts = verts.concat(divideT[i][0]);
-                normals = normals.concat(divideT[i][1]);
+        for (i = 0; i <= stackCount - 1; ++i) {
+            for (j = 0; j <= sectorCount - 1; ++j) {
+                var face = this.quad(tmpVertices[i][j+1],tmpVertices[i][j],
+                    tmpVertices[i+1][j],tmpVertices[i+1][j+1]);
+                verts = verts.concat(face[0]);
+                normals = normals.concat(face[1]);
             }
         }
-        else {
-            var tri = this.triangle(a, b, c);
+
+        return [verts, normals];
+    }
+
+    static cylinder() {
+        var verts = [];
+        var normals = [];
+
+        var faces = [];
+        var topCircle = this.unitCircle(vec3(0.0, 0.5, 0.0),0,2,1);
+        var bottomCircle = this.unitCircle(vec3(0.0, -0.5, 0.0),0,2,-1);
+
+        faces.push(topCircle);
+        faces.push(bottomCircle);
+
+        for(var i = 0; i < topCircle[0].length-2; i+=3) {
+            faces.push(this.quad(topCircle[0][i+2], topCircle[0][i+1], bottomCircle[0][i+2], bottomCircle[0][i+1]));
+        }
+
+        for (var i = 0; i < faces.length; i++) {
+            verts = verts.concat(faces[i][0]);
+            normals = normals.concat(faces[i][1]);
+        }
+
+        return [verts, normals];
+    }
+
+    static cone() {
+        var verts = [];
+        var normals = [];
+
+        var faces = [];
+        var top = vec4(0.0, 0.5, 0.0, 1.0);
+        var baseCirle = this.unitCircle(vec3(0.0, -0.5, 0.0),0,2,-1);
+
+        faces.push(baseCirle);
+
+        for(var i = 0; i < baseCirle[0].length-2; i+=3) {
+            faces.push(this.triangle(top, baseCirle[0][i+2], baseCirle[0][i+1]));
+        }
+
+        for (var i = 0; i < faces.length; i++) {
+            verts = verts.concat(faces[i][0]);
+            normals = normals.concat(faces[i][1]);
+        }
+
+        return [verts, normals];
+    }
+
+    static unitCircle(center = vec3(0.0, 0.0, 0.0),
+                      width = 0,
+                      height = 2,
+                      direction = 1) {
+        var center = vec4(center[0],center[1],center[2], 1.0);
+        var unitCirclePerim = this.unitCirclePerim();
+        var circlePerim = [];
+        var verts = [];
+        var normals = [];
+
+        for(var i=0; i < unitCirclePerim.length; i++) {
+            circlePerim[i] = vec4(0.0, 0.0, 0.0, 0.0);
+            circlePerim[i][width] = unitCirclePerim[i][0];
+            circlePerim[i][height] = unitCirclePerim[i][1];
+            circlePerim[i] = add(center,circlePerim[i]);
+
+        }
+
+        for(var i=0; i < circlePerim.length - 1; i++) {
+            if(direction == 1) {
+                var tri = this.triangle(center, circlePerim[i], circlePerim[i+1]);
+            }
+            else if(direction == -1) {
+                var tri = this.triangle(center, circlePerim[i+1], circlePerim[i]);
+            }
             verts = verts.concat(tri[0]);
             normals = normals.concat(tri[1]);
+
         }
 
         return [verts,normals];
+    }
+
+    static unitCirclePerim(radius = 0.5, sectorCount = 36) {
+        var unitCircleVertices = [];
+        var sectorStep = 2 * Math.PI / sectorCount;
+        var sectorAngle = 0;
+        for(var i = 0; i <= sectorCount; ++i)
+        {
+            sectorAngle = i * sectorStep;
+            var vertex = vec2(Math.sin(sectorAngle) * radius, Math.cos(sectorAngle) * radius);
+            unitCircleVertices.push(vertex);
+        }
+        return unitCircleVertices;
     }
 
     static color(color) {
@@ -2707,4 +2772,21 @@ function setup4() {
         0,
         vec3(1.0,1.0,1.0));
 
+    var object5 = new ObjectForTest(
+        vec3(1.5,1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.cone(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var object6 = new ObjectForTest(
+        vec3(1.5,-1.0,0.0),
+        vec3(0.0,0.0,0.0),
+        1,
+        utility.cylinder(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
 }
