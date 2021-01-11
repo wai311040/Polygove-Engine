@@ -19,9 +19,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="">
+    <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="Add Text object and Sound">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug.log" beforeDir="false" afterPath="$PROJECT_DIR$/debug.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/polygove.html" beforeDir="false" afterPath="$PROJECT_DIR$/polygove.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/polygove.js" beforeDir="false" afterPath="$PROJECT_DIR$/polygove.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -82,7 +82,7 @@
       <workItem from="1604344289051" duration="1257000" />
       <workItem from="1604345893713" duration="17591000" />
       <workItem from="1605129124231" duration="23762000" />
-      <workItem from="1605551953070" duration="85187000" />
+      <workItem from="1605551953070" duration="90014000" />
     </task>
     <task id="LOCAL-00001" summary="Update collision">
       <created>1605831266387</created>
@@ -119,7 +119,14 @@
       <option name="project" value="LOCAL" />
       <updated>1608060615663</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Add Cone, Cylinder/ Update Sphere">
+      <created>1608413710509</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1608413710509</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -167,13 +174,15 @@
     <MESSAGE value="more camera tests" />
     <MESSAGE value="Hierarchy" />
     <MESSAGE value="Add new Shapes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add new Shapes" />
+    <MESSAGE value="Add Cone, Cylinder/ Update Sphere" />
+    <MESSAGE value="Add Text object and Sound" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add Text object and Sound" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="264" y="0" key="CommitChangelistDialog2" timestamp="1608060615042">
+    <state x="264" y="0" key="CommitChangelistDialog2" timestamp="1610348433100">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
-    <state x="264" y="0" key="CommitChangelistDialog2/0.0.1280.680@0.0.1280.680" timestamp="1608060615042" />
+    <state x="264" y="0" key="CommitChangelistDialog2/0.0.1280.680@0.0.1280.680" timestamp="1610348433100" />
     <state x="93" y="93" width="1095" height="495" key="DiffContextDialog" timestamp="1606533265434">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
@@ -190,10 +199,10 @@
       <screen x="0" y="0" width="1280" height="680" />
     </state>
     <state x="479" y="46" key="Github.UntrackedFilesDialog/0.0.1280.680@0.0.1280.680" timestamp="1605554415301" />
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2" timestamp="1608060630934">
+    <state x="233" y="74" key="Vcs.Push.Dialog.v2" timestamp="1608413716332">
       <screen x="0" y="0" width="1280" height="680" />
     </state>
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2/0.0.1280.680@0.0.1280.680" timestamp="1608060630934" />
+    <state x="233" y="74" key="Vcs.Push.Dialog.v2/0.0.1280.680@0.0.1280.680" timestamp="1608413716332" />
     <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1605501733834">
       <screen x="0" y="0" width="1280" height="680" />
     </state>

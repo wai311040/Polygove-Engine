@@ -37,6 +37,7 @@ class LogManager extends Manager {
     constructor() {
         if (!LogManager.instance) {
             super();
+            this.setType("LogManager");
             LogManager.instance = this;
         }
 
@@ -642,6 +643,80 @@ class InputManager extends Manager {
     }
 }
 
+class ResourceManager extends Manager {
+    constructor() {
+        if (!ResourceManager.instance) {
+            super();
+            this.setType("ResourceManager");
+            this.max_sounds = 128;
+            this.sound = new Array(this.max_sounds);    // Array of sound buffers.
+            this.sound_count = 0;                       // Count of number of loaded sounds.
+            ResourceManager.instance = this;
+        }
+
+        return ResourceManager.instance;
+    }
+
+    // Start up the ResourceManager.
+    startUp() {
+        if (!this.isStarted()) {
+            if (super.startUp() == 0) {
+                this.sound_count = 0;
+                return 0;
+            }
+        }
+        return -1;
+    }
+
+    // Shut down the ResourceManager.
+    shutDown() {
+        super.shutDown();
+    }
+
+
+    // Load Sound from url.
+    // Return 0 if ok, else -1.
+    loadSound(url, label) {
+        if (this.sound_count == this.max_sounds) {
+            LM.writeLog("Sound array full.");
+            return -1; // Error.
+        }
+
+        if (this.sound[this.sound_count].loadSound(url) == -1) {
+            LM.writeLog("Unable to load sound");
+            return -1; // Error
+        }
+
+        // All set.
+        this.sound[this.sound_count].setLabel(label);
+        this.sound_count++;
+        return 0;
+    }
+
+    // Remove Sound with indicated label.
+    // Return 0 if ok, else -1.
+    unloadSound(label) {
+        for (var i = 0; i < this.sound_count; i++) {
+            if (this.sound[i].getLabel() == label) {
+                utility.arrayRemove(this.sound,this.sound[i]);
+                this.sound_count--;
+                return 0;
+            }
+        }
+        return -1;
+    }
+
+    // Find Sound with indicated label.
+    // Return pointer to it if found, else NULL.
+    getSound(label) {
+        for (var i = 0; i < this.sound_count; i++) {
+            if (this.sound[i].getLabel() == label)
+                return this.sound[i];
+        }
+        return null;
+    }
+}
+
 var object_static_id = 0;
 class GameObject {
 
@@ -654,13 +729,13 @@ class GameObject {
         this.m_id = object_static_id;			// Unique game engine defined identifier.
         object_static_id++;
         this.m_type = "Object";					// Game programmer defined type.
-        this.m_position = new vec3();  		    // Position in game world.
-        this.m_direction = new vec3();  		// Direction vector.
+        this.m_position = vec3();  		    // Position in game world.
+        this.m_direction = vec3();  		// Direction vector.
         this.m_speed = 0;
-        this.m_init_position = new vec3();
-        this.m_model_matrix = new mat4();
-        this.m_translate = new vec3();
-        this.m_scale = new vec3(1,1,1);
+        this.m_init_position = vec3();
+        this.m_model_matrix = mat4();
+        this.m_translate = vec3();
+        this.m_scale = vec3(1,1,1);
         this.m_rotate_angle = 0;
         this.m_rotate_axis = vec3(0,1,0);
         this.m_rotate_speed = 0;
@@ -953,6 +1028,46 @@ const Solidness = Object.freeze({
     SOFT: "Soft",
     SPECTRAL: "Spectral"
 });
+
+class DivObject {
+    constructor() {
+        var setup = this.setUpDiv();
+        this.div = setup[0];
+        this.textNode = setup[1];
+    }
+
+    setUpDiv() {
+        // look up the divcontainer
+        var divContainerElement = document.querySelector("#divcontainer");
+
+        // make the div
+        var div = document.createElement("div");
+
+        // assign it a CSS class
+        div.className = "floating-div";
+
+        // make a text node for its content
+        var textNode = document.createTextNode("");
+        div.appendChild(textNode);
+
+        // add it to the divcontainer
+        divContainerElement.appendChild(div);
+
+        return [div,textNode];
+    }
+
+    setX(newX) {
+        this.div.style.left = Math.floor(newX) + "px";
+    }
+
+    setY(newY) {
+        this.div.style.top  = Math.floor(newY) + "px";
+    }
+
+    setText(newText) {
+        this.textNode.nodeValue = newText;
+    }
+}
 
 class GameEvent {
     // Create base event.
@@ -1265,6 +1380,53 @@ class Box {
 
     getDepth() {
         return this.m_depth;
+    }
+}
+
+class Sound {
+    constructor() {
+        this.m_sound = null;            // HTMLAudioElement
+        this.m_label = "";				// Text label to identify sound.
+    }
+
+    // Load sound from url.
+    // Return 0 if ok, else -1.
+    loadSound(url) {
+        this.m_sound = new Audio(url);
+        return 0;
+    }
+
+    // Set label associated with sound.
+    setLabel(new_label) {
+        this.m_label = new_label;
+    }
+
+    // Get label associated with sound.
+    getLabel() {
+        return this.m_label;
+    }
+
+    // Play sound.
+    // If loop is true, repeat play when done.
+    play(loop) {
+        this.m_sound.play();
+        this.m_sound.loop = loop;
+    }
+
+    // Stop sound.
+    stop() {
+        this.m_sound.load();
+        this.m_sound.pause();
+    }
+
+    // Pause sound.
+    pause() {
+        this.m_sound.pause();
+    }
+
+    // Return HTMLAudioElement sound.
+    getSound() {
+        return this.m_sound;
     }
 }
 
@@ -1588,31 +1750,22 @@ class utility {
         switch (color) {
             case "red":
                 return vec4(1.0, 0.0, 0.0, 1.0);
-                break;
             case "green":
                 return vec4(0.0, 1.0, 0.0, 1.0);
-                break;
             case "blue":
                 return vec4(0.0, 0.0, 1.0, 1.0);
-                break;
             case "yellow":
                 return vec4(1.0, 1.0, 0.0, 1.0);
-                break;
             case "magenta":
                 return vec4(1.0, 0.0, 1.0, 1.0);
-                break;
             case "cyan":
                 return vec4(0.0, 1.0, 1.0, 1.0);
-                break;
             case "gray":
                 return vec4(0.5, 0.5, 0.5, 1.0);
-                break;
             case "white":
                 return vec4(1.0, 1.0, 1.0, 1.0);
-                break;
             case "black":
                 return vec4(0.0, 0.0, 0.0, 1.0);
-                break;
             default:
                 return vec4(0.0, 0.0, 0.0, 1.0);
         }
