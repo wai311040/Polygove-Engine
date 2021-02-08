@@ -3042,7 +3042,7 @@ class Camera extends GameObject {
                     var upPos = this.upObject.getPosition();
 
                     var atDir = normalize(subtract(atPos,eyePos));
-                    var upDir = normalize(subtract(upPos,eyePos));
+                    var upDir = normalize(upPos);
                     var sideDir = normalize(cross(upDir,atDir));
                     var move = scale(this.speed,atDir);
                     var sideMove = scale(this.speed,sideDir);
@@ -3050,27 +3050,22 @@ class Camera extends GameObject {
                     if (p_e.getKey() == 'w') {
                         var newEyePos = add(eyePos, move);
                         var newAtPos = add(atPos, move);
-                        var newUpPos = add(upPos, move);
                     }
                     else if (p_e.getKey() == 's'){
                         var newEyePos = subtract(eyePos, move);
                         var newAtPos = subtract(atPos, move);
-                        var newUpPos = subtract(upPos, move);
                     }
                     else if(p_e.getKey() == 'a') {
                         var newEyePos = add(eyePos, sideMove);
                         var newAtPos = add(atPos, sideMove);
-                        var newUpPos = add(upPos, sideMove);
                     }
                     else {
                         var newEyePos = subtract(eyePos, sideMove);
                         var newAtPos = subtract(atPos, sideMove);
-                        var newUpPos = subtract(upPos, sideMove);
                     }
 
                     this.eyeObject.setPosition(newEyePos);
                     this.atObject.setPosition(newAtPos);
-                    this.upObject.setPosition(newUpPos);
 
                     WM.setEye(this.eyeObject);
                     WM.setAt(this.atObject);
@@ -3086,7 +3081,7 @@ class Camera extends GameObject {
 
                     var atDis = magnitude(subtract(atPos,eyePos));
                     var atDir = normalize(subtract(atPos,eyePos));
-                    var upDir = normalize(subtract(upPos,eyePos));
+                    var upDir = normalize(upPos);
 
                     if(p_e.getKey() == 'q') {
                         var sideDir = normalize(cross(upDir,atDir));
