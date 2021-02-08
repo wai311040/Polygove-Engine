@@ -83,6 +83,9 @@
       <workItem from="1604345893713" duration="17591000" />
       <workItem from="1605129124231" duration="23762000" />
       <workItem from="1605551953070" duration="90014000" />
+      <workItem from="1612787272727" duration="122000" />
+      <workItem from="1612787425014" duration="70000" />
+      <workItem from="1612787552886" duration="9485000" />
     </task>
     <task id="LOCAL-00001" summary="Update collision">
       <created>1605831266387</created>
@@ -167,6 +170,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Update collision" />

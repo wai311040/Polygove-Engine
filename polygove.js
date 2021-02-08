@@ -362,8 +362,8 @@ class WorldManager extends Manager {
                     p_temp_o.eventHandler(c);
 
                     // If both HARD, then cannot move.
-                    if (p_o.getSolidness() == Solidness.HARD
-                        && p_temp_o.getSolidness() == Solidness.HARD)
+                    if (p_o.getSolidness() === Solidness.HARD
+                        && p_temp_o.getSolidness() === Solidness.HARD)
                         do_move = false;  // Can't move.
                 }
 
@@ -1029,7 +1029,7 @@ const Solidness = Object.freeze({
     SPECTRAL: "Spectral"
 });
 
-class DivObject {
+class TextObject {
     constructor() {
         var setup = this.setUpDiv();
         this.div = setup[0];
@@ -2037,25 +2037,37 @@ var DM = new DisplayManager();
 
 async function main() {
 
-    var test = true;
-    if (!testLM()) test = false;
+    // var test = true;
+    // if (!testLM()) test = false;
+    //
+    // LM.startUp();
+    // if (!await testClock()) test = false;
+    // // if (!testGameObject()) test = false;
+    // if (!testWM()) test = false;
+    // // if (!testHierarchy()) test = false;
+    // if (!await testGM()) test = false;
+    //
+    // // testDM();
+    //
+    // LM.startUp();
+    // if (test) {
+    //     LM.writeLog("Game Engine Backend Test : SUCCESS");
+    // } else {
+    //     LM.writeLog("Game Engine Backend Test : FAILED");
+    // }
 
-    LM.startUp();
-    if (!await testClock()) test = false;
-    // if (!testGameObject()) test = false;
-    if (!testWM()) test = false;
-    // if (!testHierarchy()) test = false;
-    if (!await testGM()) test = false;
-
-    // testDM();
-
-    LM.startUp();
-    if (test) {
-        LM.writeLog("Game Engine Backend Test : SUCCESS");
-    } else {
-        LM.writeLog("Game Engine Backend Test : FAILED");
+    // Start up GameManager.
+    if (GM.startUp() != 0) {
+        LM.writeLog("Error starting game manager!\n");
+        return false;
     }
 
+    setup();
+
+    await GM.run();
+
+    // Shutdown GameManager.
+    GM.shutDown();
 }
 
 function setupWebGL() {
@@ -2940,6 +2952,246 @@ function setup4() {
         1,
         utility.cylinder(),
         utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+}
+
+
+class BackObject extends GameObject {
+    constructor(pos, velo, rot, shape, color, angle, scale) {
+        super();
+        this.m_type = "Back Object";
+
+        this.setInitialPosition(pos);
+        this.setVelocity(velo);
+        this.setRotateSpeed(rot);
+        var model = new Model();
+        model.setShape(shape);
+        model.setColor(color);
+        model.setRotateAngle(angle);
+        model.setScale(scale);
+        this.setModel(model);
+        this.setBox(utility.unitBox());
+    }
+}
+
+class Camera extends GameObject {
+    constructor() {
+        super();
+        this.m_type = "Camera";
+        this.setSolidness(Solidness.SPECTRAL);
+
+        this.speed = 0.1;
+
+        this.eyeObject = new CameraPiece(
+            vec3(0.0,0.0,0.0),
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.cube(),
+            utility.color("gray"),
+            0,
+            vec3(1.0,1.0,1.0));
+        this.atObject = new CameraPiece(
+            vec3(0.0,0.0,-5.0),
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.cube(),
+            utility.color("gray"),
+            0,
+            vec3(1.0,1.0,1.0));
+        this.upObject = new CameraPiece(
+            vec3(0.0,1.0,0.0),
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.cube(),
+            utility.color("gray"),
+            0,
+            vec3(1.0,1.0,1.0));
+
+        WM.setEye(this.eyeObject);
+        WM.setAt(this.atObject);
+        WM.setUp(this.upObject);
+
+        this.eyeStatus = new TextObject();
+        this.eyeStatus.setX(10);
+        this.eyeStatus.setY(370);
+
+        this.updateTextBox();
+
+        this.draw_shape = false;
+        var model = new Model();
+        model.setShape(utility.cube());
+        model.setColor(utility.color("gray"));
+        this.setBox(utility.unitBox());
+        this.setModel(model);
+    }
+
+    eventHandler(p_e) {
+        if (p_e.getType() == EventType.KEYBOARD) {
+            if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
+                if (p_e.getKey() == 'p') {
+                    LM.writeLog(p_e.getKey() + " key detect, end game");
+                    GM.setGameOver(true);
+                    return 1;
+                }
+
+                if (p_e.getKey() == 'w' || p_e.getKey() == 's'
+                    || p_e.getKey() == 'a' || p_e.getKey() == 'd') {
+                    var eyePos = this.eyeObject.getPosition();
+                    var atPos = this.atObject.getPosition();
+                    var upPos = this.upObject.getPosition();
+
+                    var atDir = normalize(subtract(atPos,eyePos));
+                    var upDir = normalize(subtract(upPos,eyePos));
+                    var sideDir = normalize(cross(upDir,atDir));
+                    var move = scale(this.speed,atDir);
+                    var sideMove = scale(this.speed,sideDir);
+
+                    if (p_e.getKey() == 'w') {
+                        var newEyePos = add(eyePos, move);
+                        var newAtPos = add(atPos, move);
+                        var newUpPos = add(upPos, move);
+                    }
+                    else if (p_e.getKey() == 's'){
+                        var newEyePos = subtract(eyePos, move);
+                        var newAtPos = subtract(atPos, move);
+                        var newUpPos = subtract(upPos, move);
+                    }
+                    else if(p_e.getKey() == 'a') {
+                        var newEyePos = add(eyePos, sideMove);
+                        var newAtPos = add(atPos, sideMove);
+                        var newUpPos = add(upPos, sideMove);
+                    }
+                    else {
+                        var newEyePos = subtract(eyePos, sideMove);
+                        var newAtPos = subtract(atPos, sideMove);
+                        var newUpPos = subtract(upPos, sideMove);
+                    }
+
+                    this.eyeObject.setPosition(newEyePos);
+                    this.atObject.setPosition(newAtPos);
+                    this.upObject.setPosition(newUpPos);
+
+                    WM.setEye(this.eyeObject);
+                    WM.setAt(this.atObject);
+
+                    this.updateTextBox();
+                    return 1;
+                }
+
+                if (p_e.getKey() == 'q' || p_e.getKey() == 'e') {
+                    var eyePos = this.eyeObject.getPosition();
+                    var atPos = this.atObject.getPosition();
+                    var upPos = this.upObject.getPosition();
+
+                    var atDis = magnitude(subtract(atPos,eyePos));
+                    var atDir = normalize(subtract(atPos,eyePos));
+                    var upDir = normalize(subtract(upPos,eyePos));
+
+                    if(p_e.getKey() == 'q') {
+                        var sideDir = normalize(cross(upDir,atDir));
+                    }
+                    else {
+                        var sideDir = normalize(cross(atDir,upDir));
+                    }
+
+                    var dis = scale(atDis,atDir);
+                    var dis2 = scale(this.speed,sideDir);
+                    var newDir = normalize(add(dis,dis2));
+                    var move = scale(atDis,newDir);
+                    var newAtPos = add(eyePos, move);
+
+                    this.atObject.setPosition(newAtPos);
+
+                    WM.setAt(this.atObject);
+
+                    this.updateTextBox();
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    updateTextBox() {
+        var eyeX = this.eyeObject.getPosition()[0].toFixed(1);
+        var eyeY = this.eyeObject.getPosition()[1].toFixed(1);
+        var eyeZ = this.eyeObject.getPosition()[2].toFixed(1);
+        var eyeText = "( " + eyeX + " , " + eyeY + " , " + eyeZ + " )";
+        this.eyeStatus.setText(eyeText);
+    }
+
+    draw() {
+        if(this.draw_shape) {
+            super.draw();
+        }
+    }
+}
+
+class CameraPiece extends BackObject {
+    constructor(pos, velo, rot, shape, color, angle, scale) {
+        super(pos, velo, rot, shape, color, angle, scale);
+
+        this.m_type = "Camera Piece";
+        //this.setSolidness(Solidness.SPECTRAL);
+
+        this.draw_shape = false;
+    }
+
+    draw() {
+        if(this.draw_shape) {
+            super.draw();
+        }
+    }
+}
+
+function setup() {
+
+    var camera = new Camera();
+
+    var floor  = new BackObject(
+        vec3(0.0,-2.0,0.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("red"),
+        0,
+        vec3(50.0,1.0,50.0));
+
+    var test1 = new BackObject(
+        vec3(1.0,0.0,-3.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("red"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var test2 = new BackObject(
+        vec3(-1.0,0.0,-4.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("blue"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var test3 = new BackObject(
+        vec3(2.0,0.0,2.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("yellow"),
+        0,
+        vec3(1.0,1.0,1.0));
+
+    var test4 = new BackObject(
+        vec3(-2.0,0.0,2.0),
+        vec3(0.0,0.0,0.0),
+        0,
+        utility.cube(),
+        utility.color("green"),
         0,
         vec3(1.0,1.0,1.0));
 }
