@@ -73,6 +73,7 @@ class GameManager extends Manager {
     IM = new InputManager();
     DM = new DisplayManager();
     WM = new WorldManager();
+    RM = new ResourceManager();
 
     constructor() {
         if (!GameManager.instance) {
@@ -95,6 +96,7 @@ class GameManager extends Manager {
                 this.LM.startUp(); 		// LogManager first
                 this.DM.startUp();
                 this.IM.startUp();
+                this.RM.startUp();
                 this.WM.startUp();
 
                 //ready to run game loop
@@ -112,6 +114,7 @@ class GameManager extends Manager {
 
         //shutdown other managers
         this.WM.shutDown();
+        this.RM.shutDown();
         this.IM.shutDown();
         this.DM.shutDown();
         this.LM.shutDown(); //LogManager last
@@ -266,11 +269,6 @@ class WorldManager extends Manager {
             if (!equal(new_pos,p_o.getPosition())){
                 moved = this.moveObject(p_o, new_pos);
             }
-
-            //If GameObject moved then update its model.
-            if(moved == 0) {
-                p_o.updateModel();
-            }
         }
 
         // Delete all marked objects.
@@ -375,27 +373,30 @@ class WorldManager extends Manager {
         // Do move.
         p_o.setPosition(where);			    // move object
 
+        // moved, update its model.
+        p_o.updateModel();
+
         // If camera is following this object, adjust camera.
         if (this.eye_following == p_o)
-            this.setEye(p_o);
+            this.setEye(p_o.getPosition());
         if (this.at_following == p_o)
-            this.setAt(p_o);
+            this.setAt(p_o.getPosition());
         if (this.up_following == p_o)
-            this.setUp(p_o);
+            this.setUp(p_o.getPosition());
 
         return 0; // Move was ok.
     }
 
     setEye(new_eye) {
-        eye = new_eye.getPosition();
+        eye = new_eye;
     }
 
     setAt(new_at) {
-        at = new_at.getPosition();
+        at = new_at;
     }
 
     setUp(new_up) {
-        up = new_up.getPosition();
+        up = new_up;
     }
 
     // Set camera position to follow Object.
@@ -420,7 +421,7 @@ class WorldManager extends Manager {
         // If found, adjust attribute accordingly and set eye position.
         if (found) {
             this.eye_following = new_eye_following;
-            this.setEye(this.eye_following);
+            this.setEye(this.eye_following.getPosition());
             return 0;
         }
 
@@ -449,7 +450,7 @@ class WorldManager extends Manager {
 
         if (found) {
             this.at_following = new_at_following;
-            this.setAt(this.at_following);
+            this.setAt(this.at_following.getPosition());
             return 0;
         }
 
@@ -478,7 +479,7 @@ class WorldManager extends Manager {
 
         if (found) {
             this.up_following = new_up_following;
-            this.setUp(this.up_following);
+            this.setUp(this.up_following.getPosition());
             return 0;
         }
 
@@ -534,9 +535,9 @@ class DisplayManager extends Manager {
         super.shutDown();
     }
 
-    render(object) {
+    render(object, useLight = 1) {
         if(this.isStarted()) {
-            renderWebGL(object);
+            renderWebGL(object, useLight);
         }
     }
 }
@@ -967,6 +968,10 @@ class GameObject {
 
     setBox(new_box) {
         this.m_box = new_box
+
+        if(this.m_model != null) {
+            this.updateBox(this.m_position, this.m_model.getScale());
+        }
     }
 
     getBox()  {
@@ -2020,10 +2025,10 @@ var at = vec3(0.0, 0.0, 0.0);
 var up = vec3(0.0, 1.0, 0.0);
 
 var lightPosition = vec4(0.0, 0.0, 5.0, 0.0 );
-var lightAmbient = vec4( 0.1, 0.1, 0.1, 1.0 );
+var lightAmbient = vec4( 0.5, 0.5, 0.5, 1.0 );
 var lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
 var lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
-var cutoffThreshold = 0.98;
+var cutoffThreshold = 0.95;
 
 var materialAmbient = vec4( 1.0, 1.0, 1.0, 1.0 );
 var materialDiffuse = vec4( 0.8, 0.8, 0.8, 1.0 );
@@ -2116,7 +2121,7 @@ function renderClear() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
-function renderWebGL(object) {
+function renderWebGL(object, useLight = 1) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.CULL_FACE);
 
@@ -2137,7 +2142,7 @@ function renderWebGL(object) {
         mvMatrix = mult(viewMatrix, modelMatrix);
         gl.uniformMatrix4fv(modelViewLoc, false, flatten(mvMatrix));
 
-        gl.uniform1i(gl.getUniformLocation(program, "useLight"), 1);
+        gl.uniform1i(gl.getUniformLocation(program, "useLight"), useLight);
 
         drawShape(shape, color);
     }
@@ -2183,7 +2188,7 @@ function drawShape(shape, color) {
 }
 
 function renderBox(box, trans = vec3(), scal = vec3(1, 1, 1),
-                     rot = 0, axis = vec3(0,1,0)) {
+                   rot = 0, axis = vec3(0,1,0)) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.disable(gl.CULL_FACE);
 
@@ -2975,58 +2980,360 @@ class BackObject extends GameObject {
     }
 }
 
-class Camera extends GameObject {
-    constructor() {
-        super();
-        this.m_type = "Camera";
-        this.setSolidness(Solidness.SPECTRAL);
-
+class Camera {
+    constructor(pos) {
         this.speed = 0.1;
 
-        this.eyeObject = new CameraPiece(
-            vec3(0.0,0.0,0.0),
-            vec3(0.0,0.0,0.0),
-            0,
-            utility.cube(),
-            utility.color("gray"),
-            0,
-            vec3(1.0,1.0,1.0));
-        this.atObject = new CameraPiece(
-            vec3(0.0,0.0,-5.0),
-            vec3(0.0,0.0,0.0),
-            0,
-            utility.cube(),
-            utility.color("gray"),
-            0,
-            vec3(1.0,1.0,1.0));
-        this.upObject = new CameraPiece(
-            vec3(0.0,1.0,0.0),
-            vec3(0.0,0.0,0.0),
-            0,
-            utility.cube(),
-            utility.color("gray"),
-            0,
-            vec3(1.0,1.0,1.0));
+        this.eyePos = pos;
+        this.atPos = add(pos,vec3(2.0,0.0,0.0));
+        this.upPos = vec3(0.0,1.0,0.0);
 
-        WM.setEye(this.eyeObject);
-        WM.setAt(this.atObject);
-        WM.setUp(this.upObject);
+        WM.setEye(this.eyePos);
+        WM.setAt(this.atPos);
+        WM.setUp(this.upPos);
+    }
 
-        this.eyeStatus = new TextObject();
-        this.eyeStatus.setX(10);
-        this.eyeStatus.setY(370);
+    cameraMove(p_e) {
+        var eyePos = this.eyePos;
+        var atPos = this.atPos;
+        var upPos = this.upPos;
 
-        this.updateTextBox();
+        var atDir = normalize(subtract(atPos,eyePos));
+        var upDir = normalize(upPos);
+        var sideDir = normalize(cross(upDir,atDir));
+        var move = scale(this.speed,atDir);
+        var sideMove = scale(this.speed,sideDir);
 
-        this.draw_shape = false;
-        var model = new Model();
-        model.setShape(utility.cube());
-        model.setColor(utility.color("gray"));
-        this.setBox(utility.unitBox());
-        this.setModel(model);
+        if (p_e.getKey() == 'w') {
+            var newEyePos = add(eyePos, move);
+            var newAtPos = add(atPos, move);
+        }
+        else if (p_e.getKey() == 's'){
+            var newEyePos = subtract(eyePos, move);
+            var newAtPos = subtract(atPos, move);
+        }
+        else if(p_e.getKey() == 'a') {
+            var newEyePos = add(eyePos, sideMove);
+            var newAtPos = add(atPos, sideMove);
+        }
+        else {
+            var newEyePos = subtract(eyePos, sideMove);
+            var newAtPos = subtract(atPos, sideMove);
+        }
+
+        this.eyePos = newEyePos;
+        this.atPos = newAtPos;
+
+        WM.setEye(this.eyePos);
+        WM.setAt(this.atPos);
+
+        return this.atPos;
+    }
+
+    cameraRotate(p_e){
+        var eyePos = this.eyePos;
+        var atPos = this.atPos;
+        var upPos = this.upPos;
+
+        var atDis = magnitude(subtract(atPos,eyePos));
+        var atDir = normalize(subtract(atPos,eyePos));
+        var upDir = normalize(upPos);
+
+        if(p_e.getKey() == 'q') {
+            var sideDir = normalize(cross(upDir,atDir));
+        }
+        else {
+            var sideDir = normalize(cross(atDir,upDir));
+        }
+
+        var dis = scale(atDis,atDir);
+        var dis2 = scale(this.speed/2,sideDir);
+        var newDir = normalize(add(dis,dis2));
+        var move = scale(atDis,newDir);
+        var newEyePos = subtract(atPos, move);
+
+        this.eyePos = newEyePos;
+
+        WM.setEye(this.eyePos);
+    }
+}
+
+class MazeWall extends BackObject {
+    constructor(pos, velo, rot, shape, color, angle, scale) {
+        super(pos, velo, rot, shape, color, angle, scale);
+
+        this.m_type = "Maze Wall";
     }
 
     eventHandler(p_e) {
+        return super.eventHandler(p_e);
+    }
+}
+
+class MazeRoom  extends MazeWall {
+    constructor(center, type = 1, num = 1, color = "gray") {
+        var scal = 5;
+        super(center,
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.cube(),
+            utility.color(color),
+            0,
+            vec3(scal,0.2,scal));
+
+        var haveLeftWall = false;
+        var haveRightWall = false;
+        var haveTopWall = false;
+        var haveBottomWall = false;
+
+        switch (type) {
+            // default = 1. open : no wall
+
+            // 2. single wall
+            case 2:
+                switch (num) {
+                    // 2.1 single wall 1 : left
+                    case 1:
+                        haveLeftWall = true;
+                        break;
+                    // 2.2 single wall 2 : right
+                    case 2:
+                        haveRightWall = true;
+                        break;
+                    // 2.3 single wall 3 : top
+                    case 3:
+                        haveTopWall = true;
+                        break;
+                    // 2.4 single wall 4 : bottom
+                    case 4:
+                        haveBottomWall = true;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            // 3. passage
+            case 3:
+                switch (num) {
+                    // 3.1 passage 1 : left + right
+                    case 1:
+                        haveLeftWall = true;
+                        haveRightWall = true;
+                        break;
+                    // 3.2 passage 2 : top + bottom
+                    case 2:
+                        haveTopWall = true;
+                        haveBottomWall = true;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            // 4. corner
+            case 4:
+                switch (num) {
+                    // 4.1 corner 1 : left + top
+                    case 1:
+                        haveLeftWall = true;
+                        haveTopWall = true;
+                        break;
+                    // 4.2 corner 2 : left + bottom
+                    case 2:
+                        haveLeftWall = true;
+                        haveBottomWall = true;
+                        break;
+                    // 4.3 corner 3 : right + top
+                    case 3:
+                        haveRightWall = true;
+                        haveTopWall = true;
+                        break;
+                    // 4.4 corner 4 : right + bottom
+                    case 4:
+                        haveRightWall = true;
+                        haveBottomWall = true;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            // 5. dead end
+            case 5:
+                switch (num) {
+                    // 5.1 dead end 1 : left + right + top
+                    case 1:
+                        haveLeftWall = true;
+                        haveRightWall = true;
+                        haveTopWall = true;
+                        break;
+                    // 5.2 dead end 2 : left + right + bottom
+                    case 2:
+                        haveLeftWall = true;
+                        haveRightWall = true;
+                        haveBottomWall = true;
+                        break;
+                    // 5.3 dead end 3 : left + top + bottom
+                    case 3:
+                        haveLeftWall = true;
+                        haveTopWall = true;
+                        haveBottomWall = true;
+                        break;
+                    // 5.4 dead end 4 : right + top + bottom
+                    case 4:
+                        haveRightWall = true;
+                        haveTopWall = true;
+                        haveBottomWall = true;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            // 6. close : all side walls
+            case 6:
+                haveLeftWall = true;
+                haveRightWall = true;
+                haveTopWall = true;
+                haveBottomWall = true;
+                break;
+            default:
+                break;
+        }
+
+        if(haveLeftWall) {
+            var pos = add(center, vec3(scal/2,scal/2,0));
+            var leftWall = new MazeWall(
+                pos,
+                vec3(0.0,0.0,0.0),
+                0,
+                utility.cube(),
+                utility.color(color),
+                0,
+                vec3(0.2,scal,scal));
+            this.addHierarchy(leftWall);
+        }
+
+        if(haveRightWall) {
+            var pos = add(center, vec3(-scal/2,scal/2,0));
+            var rightWall = new MazeWall(
+                pos,
+                vec3(0.0,0.0,0.0),
+                0,
+                utility.cube(),
+                utility.color(color),
+                0,
+                vec3(0.2,scal,scal));
+            this.addHierarchy(rightWall);
+        }
+
+        if(haveTopWall) {
+            var pos = add(center, vec3(0,scal/2,scal/2));
+            var topWall = new MazeWall(
+                pos,
+                vec3(0.0,0.0,0.0),
+                0,
+                utility.cube(),
+                utility.color(color),
+                0,
+                vec3(scal,scal,0.2));
+            this.addHierarchy(topWall);
+        }
+
+        if(haveBottomWall) {
+            var pos = add(center, vec3(0,scal/2,-scal/2));
+            var bottomWall = new MazeWall(
+                pos,
+                vec3(0.0,0.0,0.0),
+                0,
+                utility.cube(),
+                utility.color(color),
+                0,
+                vec3(scal,scal,0.2));
+            this.addHierarchy(bottomWall);
+        }
+
+    }
+
+}
+
+class MazeSpike extends BackObject
+{
+    constructor(pos) {
+        super(pos,
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.cone(),
+            utility.color("red"),
+            0,
+            vec3(1.0,1.0,1.0));
+
+        this.m_type = "Maze Spike";
+    }
+
+    eventHandler(p_e) {
+        if(p_e.getObject1().getType() == "Player") {
+            var ev_h = new EventHit();
+            WM.onEvent(ev_h);
+        }
+    }
+}
+
+class EventHit extends GameEvent {
+    constructor() {
+        super();
+        this.setType("Hit Event");
+    }
+}
+
+class Player extends GameObject {
+    constructor(pos) {
+        super();
+
+        this.setInitialPosition(pos);
+        this.setVelocity(vec3(0.0,0.0,0.0));
+        this.setRotateSpeed(0);
+        var model = new Model();
+        model.setShape(utility.sphere());
+        model.setColor(utility.color("blue"));
+        model.setRotateAngle(0);
+        model.setScale(vec3(0.6,0.6,0.6));
+        this.setModel(model);
+        this.setBox(utility.unitBox());
+
+        var camera_pos = add(pos,vec3(-2,0.5,0));
+        this.camera = new Camera(camera_pos);
+
+        this.m_type = "Player";
+        this.health = 10;
+        this.hit_cooldown = 0;
+        this.hit_ini_cooldown = 100;
+
+        this.healthStatus = new TextObject();
+        this.healthStatus.setX(10);
+        this.healthStatus.setY(370);
+
+        this.updateHealthDisplay();
+    }
+
+    updateHealthDisplay() {
+        var healthText = "HEALTH ";
+        for (var i = 0; i < this.health; i++) {
+            healthText += "[+]";
+        }
+        this.healthStatus.setText(healthText);
+    }
+
+    eventHandler(p_e) {
+
+        if(p_e.getType() == "Hit Event" && this.hit_cooldown == 0) {
+
+            this.health--;
+            this.hit_cooldown = this.hit_ini_cooldown;
+            return 1;
+        }
+
+        if(p_e.getType() == EventType.STEP) {
+            this.hit_cooldown--;
+        }
+
         if (p_e.getType() == EventType.KEYBOARD) {
             if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
                 if (p_e.getKey() == 'p') {
@@ -3037,70 +3344,18 @@ class Camera extends GameObject {
 
                 if (p_e.getKey() == 'w' || p_e.getKey() == 's'
                     || p_e.getKey() == 'a' || p_e.getKey() == 'd') {
-                    var eyePos = this.eyeObject.getPosition();
-                    var atPos = this.atObject.getPosition();
-                    var upPos = this.upObject.getPosition();
 
-                    var atDir = normalize(subtract(atPos,eyePos));
-                    var upDir = normalize(upPos);
-                    var sideDir = normalize(cross(upDir,atDir));
-                    var move = scale(this.speed,atDir);
-                    var sideMove = scale(this.speed,sideDir);
+                    var cameraPos = this.camera.cameraMove(p_e);
+                    var newPos = add(cameraPos,vec3(0,-0.5,0));
 
-                    if (p_e.getKey() == 'w') {
-                        var newEyePos = add(eyePos, move);
-                        var newAtPos = add(atPos, move);
-                    }
-                    else if (p_e.getKey() == 's'){
-                        var newEyePos = subtract(eyePos, move);
-                        var newAtPos = subtract(atPos, move);
-                    }
-                    else if(p_e.getKey() == 'a') {
-                        var newEyePos = add(eyePos, sideMove);
-                        var newAtPos = add(atPos, sideMove);
-                    }
-                    else {
-                        var newEyePos = subtract(eyePos, sideMove);
-                        var newAtPos = subtract(atPos, sideMove);
-                    }
-
-                    this.eyeObject.setPosition(newEyePos);
-                    this.atObject.setPosition(newAtPos);
-
-                    WM.setEye(this.eyeObject);
-                    WM.setAt(this.atObject);
-
-                    this.updateTextBox();
+                    this.setInitialPosition(newPos);
+                    WM.moveObject(this,newPos);
                     return 1;
                 }
 
                 if (p_e.getKey() == 'q' || p_e.getKey() == 'e') {
-                    var eyePos = this.eyeObject.getPosition();
-                    var atPos = this.atObject.getPosition();
-                    var upPos = this.upObject.getPosition();
 
-                    var atDis = magnitude(subtract(atPos,eyePos));
-                    var atDir = normalize(subtract(atPos,eyePos));
-                    var upDir = normalize(upPos);
-
-                    if(p_e.getKey() == 'q') {
-                        var sideDir = normalize(cross(upDir,atDir));
-                    }
-                    else {
-                        var sideDir = normalize(cross(atDir,upDir));
-                    }
-
-                    var dis = scale(atDis,atDir);
-                    var dis2 = scale(this.speed,sideDir);
-                    var newDir = normalize(add(dis,dis2));
-                    var move = scale(atDis,newDir);
-                    var newAtPos = add(eyePos, move);
-
-                    this.atObject.setPosition(newAtPos);
-
-                    WM.setAt(this.atObject);
-
-                    this.updateTextBox();
+                    this.camera.cameraRotate(p_e);
                     return 1;
                 }
             }
@@ -3108,54 +3363,32 @@ class Camera extends GameObject {
 
         return 0;
     }
-
-    updateTextBox() {
-        var eyeX = this.eyeObject.getPosition()[0].toFixed(1);
-        var eyeY = this.eyeObject.getPosition()[1].toFixed(1);
-        var eyeZ = this.eyeObject.getPosition()[2].toFixed(1);
-        var eyeText = "( " + eyeX + " , " + eyeY + " , " + eyeZ + " )";
-        this.eyeStatus.setText(eyeText);
-    }
-
-    draw() {
-        if(this.draw_shape) {
-            super.draw();
-        }
-    }
-}
-
-class CameraPiece extends BackObject {
-    constructor(pos, velo, rot, shape, color, angle, scale) {
-        super(pos, velo, rot, shape, color, angle, scale);
-
-        this.m_type = "Camera Piece";
-        //this.setSolidness(Solidness.SPECTRAL);
-
-        this.draw_shape = false;
-    }
-
-    draw() {
-        if(this.draw_shape) {
-            super.draw();
-        }
-    }
 }
 
 function setup() {
 
-    var camera = new Camera();
+    var player = new Player(vec3(0.0, 0.0, 0.0));
 
-    var floor  = new BackObject(
-        vec3(0.0,-2.0,0.0),
+    var exit = new BackObject(
+        vec3(0.0,0.0,-10.0),
         vec3(0.0,0.0,0.0),
         0,
         utility.cube(),
-        utility.color("red"),
+        utility.color("yellow"),
         0,
-        vec3(50.0,1.0,50.0));
+        vec3(1.0,1.0,1.0));
 
+    var mazeList = [
+        [[4,1],[2,3],[4,3]],
+        [[5,2],[4,4],[2,2]],
+        [[4,2],[1,1],[4,4]]
+    ];
+    mazeSetup(mazeList,mazeList.length);
+}
+
+function testObjSetup() {
     var test1 = new BackObject(
-        vec3(1.0,0.0,-3.0),
+        vec3(1.0,0.0,3.0),
         vec3(0.0,0.0,0.0),
         0,
         utility.cube(),
@@ -3164,7 +3397,7 @@ function setup() {
         vec3(1.0,1.0,1.0));
 
     var test2 = new BackObject(
-        vec3(-1.0,0.0,-4.0),
+        vec3(-1.0,0.0,4.0),
         vec3(0.0,0.0,0.0),
         0,
         utility.cube(),
@@ -3173,7 +3406,7 @@ function setup() {
         vec3(1.0,1.0,1.0));
 
     var test3 = new BackObject(
-        vec3(2.0,0.0,2.0),
+        vec3(2.0,0.0,-2.0),
         vec3(0.0,0.0,0.0),
         0,
         utility.cube(),
@@ -3182,11 +3415,24 @@ function setup() {
         vec3(1.0,1.0,1.0));
 
     var test4 = new BackObject(
-        vec3(-2.0,0.0,2.0),
+        vec3(-2.0,0.0,-2.0),
         vec3(0.0,0.0,0.0),
         0,
         utility.cube(),
         utility.color("green"),
         0,
         vec3(1.0,1.0,1.0));
+}
+
+function mazeSetup(mazeList, dim) {
+    var offset = 5;
+    var startX = 5;
+    var startY = -1;
+    var startZ = 5;
+    for (var j = 0; j < dim ; j ++) {
+        for (var i = 0; i < dim ; i ++) {
+            var center = vec3(startX-i*offset,startY,startZ-j*offset);
+            new MazeRoom(center,mazeList[j][i][0],mazeList[j][i][1]);
+        }
+    }
 }

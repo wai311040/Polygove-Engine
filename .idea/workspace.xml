@@ -19,9 +19,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="Add Text object and Sound">
+    <list default="true" id="72068bae-8f60-4785-a0ac-c9c27048b88b" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/polygove.html" beforeDir="false" afterPath="$PROJECT_DIR$/polygove.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/polygove.js" beforeDir="false" afterPath="$PROJECT_DIR$/polygove.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -85,7 +84,7 @@
       <workItem from="1605551953070" duration="90014000" />
       <workItem from="1612787272727" duration="122000" />
       <workItem from="1612787425014" duration="70000" />
-      <workItem from="1612787552886" duration="9485000" />
+      <workItem from="1612787552886" duration="27036000" />
     </task>
     <task id="LOCAL-00001" summary="Update collision">
       <created>1605831266387</created>
@@ -129,7 +128,21 @@
       <option name="project" value="LOCAL" />
       <updated>1608413710509</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Game Develop: movable camera">
+      <created>1612798314378</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1612798314378</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Game Develop: update movable camera">
+      <created>1612798526771</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1612798526771</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -180,44 +193,8 @@
     <MESSAGE value="Add new Shapes" />
     <MESSAGE value="Add Cone, Cylinder/ Update Sphere" />
     <MESSAGE value="Add Text object and Sound" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Text object and Sound" />
-  </component>
-  <component name="WindowStateProjectService">
-    <state x="264" y="0" key="CommitChangelistDialog2" timestamp="1610348433100">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="264" y="0" key="CommitChangelistDialog2/0.0.1280.680@0.0.1280.680" timestamp="1610348433100" />
-    <state x="93" y="93" width="1095" height="495" key="DiffContextDialog" timestamp="1606533265434">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="93" y="93" width="1095" height="495" key="DiffContextDialog/0.0.1280.680@0.0.1280.680" timestamp="1606533265434" />
-    <state x="421" y="96" key="FileChooserDialogImpl" timestamp="1606092010034">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="421" y="96" key="FileChooserDialogImpl/0.0.1280.680@0.0.1280.680" timestamp="1606092010034" />
-    <state x="382" y="211" width="382" height="231" key="Github.ShareDialog" timestamp="1605554398776">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="382" y="211" width="382" height="231" key="Github.ShareDialog/0.0.1280.680@0.0.1280.680" timestamp="1605554398776" />
-    <state x="479" y="46" key="Github.UntrackedFilesDialog" timestamp="1605554415301">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="479" y="46" key="Github.UntrackedFilesDialog/0.0.1280.680@0.0.1280.680" timestamp="1605554415301" />
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2" timestamp="1608413716332">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="233" y="74" key="Vcs.Push.Dialog.v2/0.0.1280.680@0.0.1280.680" timestamp="1608413716332" />
-    <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1605501733834">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="241" y="0" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/0.0.1280.680@0.0.1280.680" timestamp="1605501733834" />
-    <state x="303" y="1" width="672" height="678" key="search.everywhere.popup" timestamp="1607231798723">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="303" y="1" width="672" height="678" key="search.everywhere.popup/0.0.1280.680@0.0.1280.680" timestamp="1607231798723" />
-    <state x="471" y="132" key="svn.repositoryBrowser" timestamp="1606091981152">
-      <screen x="0" y="0" width="1280" height="680" />
-    </state>
-    <state x="471" y="132" key="svn.repositoryBrowser/0.0.1280.680@0.0.1280.680" timestamp="1606091981152" />
+    <MESSAGE value="Game Develop: movable camera" />
+    <MESSAGE value="Game Develop: update movable camera" />
+    <option name="LAST_COMMIT_MESSAGE" value="Game Develop: update movable camera" />
   </component>
 </project>
