@@ -69,12 +69,6 @@ class LogManager extends Manager {
 
 class GameManager extends Manager {
 
-    LM = new LogManager();
-    IM = new InputManager();
-    DM = new DisplayManager();
-    WM = new WorldManager();
-    RM = new ResourceManager();
-
     constructor() {
         if (!GameManager.instance) {
             super();
@@ -93,11 +87,11 @@ class GameManager extends Manager {
             //startup it self
             if (super.startUp() == 0) {
                 // startup other managers
-                this.LM.startUp(); 		// LogManager first
-                this.DM.startUp();
-                this.IM.startUp();
-                this.RM.startUp();
-                this.WM.startUp();
+                LM.startUp(); 		// LogManager first
+                DM.startUp();
+                IM.startUp();
+                RM.startUp();
+                WM.startUp();
 
                 //ready to run game loop
                 this.setGameOver(false);
@@ -113,11 +107,11 @@ class GameManager extends Manager {
         this.setGameOver(true);
 
         //shutdown other managers
-        this.WM.shutDown();
-        this.RM.shutDown();
-        this.IM.shutDown();
-        this.DM.shutDown();
-        this.LM.shutDown(); //LogManager last
+        WM.shutDown();
+        RM.shutDown();
+        IM.shutDown();
+        DM.shutDown();
+        LM.shutDown(); //LogManager last
 
         //shut down itself
         super.shutDown();
@@ -133,8 +127,12 @@ class GameManager extends Manager {
         for (;!this.getGameOver();) {
             clock.delta();
 
+            window.onresize = function () {
+                setupViewport();
+            }
+
             // // Get input e.g., keyboard/mouse
-            this.IM.getInput();
+            IM.getInput();
 
             // Update game world state
             // Send step event to all objects.
@@ -144,10 +142,10 @@ class GameManager extends Manager {
             }
 
             //Update and move objects in World
-            this.WM.update();
+            WM.update();
 
             // Draw current scene to back buffer
-            this.WM.draw();
+            WM.draw();
 
             game_loop_count++;
 
@@ -572,74 +570,76 @@ class InputManager extends Manager {
     // Get input from the keyboard and mouse.
     // Pass event along to all Objects.
     getInput() {
-        window.onkeypress = function (event) {
-            //create EventKeyboard(key and action)
-            var p_key_event = new EventKeyboard();
-            p_key_event.setKeyboardAction(EventKeyboardAction.KEY_PRESS);
-            p_key_event.setKey(event.key);
+        if(this.isStarted()) {
+            window.onkeypress = function (event) {
+                //create EventKeyboard(key and action)
+                var p_key_event = new EventKeyboard();
+                p_key_event.setKeyboardAction(EventKeyboardAction.KEY_PRESS);
+                p_key_event.setKey(event.key);
 
-            //send EventKeyboard to all Objects
-            WM.onEvent(p_key_event);
-        }
+                //send EventKeyboard to all Objects
+                WM.onEvent(p_key_event);
+            }
 
-        window.onkeyup = function (event) {
-            //create EventKeyboard(key and action)
-            var p_key_event = new EventKeyboard();
-            p_key_event.setKeyboardAction(EventKeyboardAction.KEY_UP);
-            p_key_event.setKey(event.key);
+            window.onkeyup = function (event) {
+                //create EventKeyboard(key and action)
+                var p_key_event = new EventKeyboard();
+                p_key_event.setKeyboardAction(EventKeyboardAction.KEY_UP);
+                p_key_event.setKey(event.key);
 
-            //send EventKeyboard to all Objects
-            WM.onEvent(p_key_event);
-        }
+                //send EventKeyboard to all Objects
+                WM.onEvent(p_key_event);
+            }
 
-        window.onkeydown = function (event) {
-            //create EventKeyboard(key and action)
-            var p_key_event = new EventKeyboard();
-            p_key_event.setKeyboardAction(EventKeyboardAction.KEY_DOWN);
-            p_key_event.setKey(event.key);
+            window.onkeydown = function (event) {
+                //create EventKeyboard(key and action)
+                var p_key_event = new EventKeyboard();
+                p_key_event.setKeyboardAction(EventKeyboardAction.KEY_DOWN);
+                p_key_event.setKey(event.key);
 
-            //send EventKeyboard to all Objects
-            WM.onEvent(p_key_event);
-        }
+                //send EventKeyboard to all Objects
+                WM.onEvent(p_key_event);
+            }
 
-        window.onclick = function (event) {
-            //create EventMouse(x, y and action)
-            var p_mouse_event = new EventMouse();
-            p_mouse_event.setMouseAction(EventMouseAction.MOUSE_CLICK);
-            p_mouse_event.setMousePosition(vec2(event.clientX,event.clientY));
+            window.onclick = function (event) {
+                //create EventMouse(x, y and action)
+                var p_mouse_event = new EventMouse();
+                p_mouse_event.setMouseAction(EventMouseAction.MOUSE_CLICK);
+                p_mouse_event.setMousePosition(vec2(event.clientX, event.clientY));
 
-            //send EventMouse to all Objects
-            WM.onEvent(p_mouse_event);
-        }
+                //send EventMouse to all Objects
+                WM.onEvent(p_mouse_event);
+            }
 
-        window.onmouseup = function (event) {
-            //create EventMouse(x, y and action)
-            var p_mouse_event = new EventMouse();
-            p_mouse_event.setMouseAction(EventMouseAction.MOUSE_UP);
-            p_mouse_event.setMousePosition(vec2(event.clientX,event.clientY));
+            window.onmouseup = function (event) {
+                //create EventMouse(x, y and action)
+                var p_mouse_event = new EventMouse();
+                p_mouse_event.setMouseAction(EventMouseAction.MOUSE_UP);
+                p_mouse_event.setMousePosition(vec2(event.clientX, event.clientY));
 
-            //send EventMouse to all Objects
-            WM.onEvent(p_mouse_event);
-        }
+                //send EventMouse to all Objects
+                WM.onEvent(p_mouse_event);
+            }
 
-        window.onmousedown = function (event) {
-            //create EventMouse(x, y and action)
-            var p_mouse_event = new EventMouse();
-            p_mouse_event.setMouseAction(EventMouseAction.MOUSE_DOWN);
-            p_mouse_event.setMousePosition(vec2(event.clientX,event.clientY));
+            window.onmousedown = function (event) {
+                //create EventMouse(x, y and action)
+                var p_mouse_event = new EventMouse();
+                p_mouse_event.setMouseAction(EventMouseAction.MOUSE_DOWN);
+                p_mouse_event.setMousePosition(vec2(event.clientX, event.clientY));
 
-            //send EventMouse to all Objects
-            WM.onEvent(p_mouse_event);
-        }
+                //send EventMouse to all Objects
+                WM.onEvent(p_mouse_event);
+            }
 
-        window.onmousemove = function (event) {
-            //create EventMouse(x, y and action)
-            var p_mouse_event = new EventMouse();
-            p_mouse_event.setMouseAction(EventMouseAction.MOUSE_MOVE);
-            p_mouse_event.setMousePosition(vec2(event.clientX,event.clientY));
+            window.onmousemove = function (event) {
+                //create EventMouse(x, y and action)
+                var p_mouse_event = new EventMouse();
+                p_mouse_event.setMouseAction(EventMouseAction.MOUSE_MOVE);
+                p_mouse_event.setMousePosition(vec2(event.clientX, event.clientY));
 
-            //send EventMouse to all Objects
-            WM.onEvent(p_mouse_event);
+                //send EventMouse to all Objects
+                WM.onEvent(p_mouse_event);
+            }
         }
     }
 }
@@ -2039,6 +2039,8 @@ var GM = new GameManager();
 var LM = new LogManager();
 var WM = new WorldManager();
 var DM = new DisplayManager();
+var IM = new InputManager();
+var RM = new ResourceManager();
 
 async function main() {
 
@@ -2093,12 +2095,7 @@ function setupWebGL() {
     modelViewLoc = gl.getUniformLocation(program, "modelViewMatrix");
 
     //Set up the viewport
-    gl.viewport(0, 0, 400, 400);
-    var fovy = 45.0;  // Field-of-view in Y direction angle (in degrees)
-    var aspect = canvas.width / canvas.height;
-    projectionLoc = gl.getUniformLocation(program, "projectionMatrix");
-    pMatrix = perspective(fovy, aspect, .1, 25);
-    gl.uniformMatrix4fv(projectionLoc, false, flatten(pMatrix));
+    setupViewport();
 
     var cutoffLoc = gl.getUniformLocation(program, "cutoffThreshold");
     gl.uniform1f(cutoffLoc, cutoffThreshold);
@@ -2115,6 +2112,18 @@ function setupWebGL() {
 
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
+}
+
+function setupViewport() {
+    var canvas = document.getElementById('webgl');
+    canvas.width  = window.innerWidth * 0.98;
+    canvas.height = window.innerHeight * 0.96;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    var fovy = 45.0;  // Field-of-view in Y direction angle (in degrees)
+    var aspect = canvas.width / canvas.height;
+    projectionLoc = gl.getUniformLocation(program, "projectionMatrix");
+    pMatrix = perspective(fovy, aspect, .1, 25);
+    gl.uniformMatrix4fv(projectionLoc, false, flatten(pMatrix));
 }
 
 function renderClear() {
@@ -2962,6 +2971,8 @@ function setup4() {
 }
 
 
+// ---------------------------- Game Part -----------------------------------------
+
 class BackObject extends GameObject {
     constructor(pos, velo, rot, shape, color, angle, scale) {
         super();
@@ -3230,9 +3241,10 @@ class Player extends GameObject {
         this.hit_cooldown = 0;
         this.hit_ini_cooldown = 10;
 
+        var canvas = document.getElementById('webgl');
         this.healthStatus = new TextObject();
         this.healthStatus.setX(10);
-        this.healthStatus.setY(370);
+        this.healthStatus.setY(canvas.height-30);
 
         this.updateHealthDisplay();
     }
@@ -3302,7 +3314,6 @@ class Player extends GameObject {
 
                 if (p_e.getKey() == 'w' || p_e.getKey() == 's'
                     || p_e.getKey() == 'a' || p_e.getKey() == 'd') {
-                    this.last_key = p_e.getKey();
 
                     var cameraPos = this.camera.cameraMove(p_e.getKey());
                     var newPos = add(cameraPos,vec3(0,-0.5,0));
@@ -3352,24 +3363,26 @@ function mazeSetup(mazeList, dim) {
 }
 
 function GameWin() {
+    var canvas = document.getElementById('webgl');
 
     var congrat = new TextObject();
-    congrat.setX(130);
-    congrat.setY(200);
-
     var congratText = "Congratulation ! ! !";
+
+    congrat.setX(canvas.width/2 - congratText.length);
+    congrat.setY(canvas.height/2);
     congrat.setText(congratText);
 
     GM.setGameOver(true);
 }
 
 function GameOver() {
+    var canvas = document.getElementById('webgl');
 
     var over = new TextObject();
-    over.setX(140);
-    over.setY(200);
-
     var overText = "Game Over . . . . .";
+
+    over.setX(canvas.width/2 - overText.length);
+    over.setY(canvas.height/2);
     over.setText(overText);
 
     GM.setGameOver(true);
