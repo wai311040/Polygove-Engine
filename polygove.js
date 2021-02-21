@@ -2985,7 +2985,7 @@ class Camera {
         this.speed = 0.1;
 
         this.eyePos = pos;
-        this.atPos = add(pos,vec3(2.0,0.0,0.0));
+        this.atPos = add(pos,vec3(0.0,0.0,2.0));
         this.upPos = vec3(0.0,1.0,0.0);
 
         WM.setEye(this.eyePos);
@@ -2993,7 +2993,7 @@ class Camera {
         WM.setUp(this.upPos);
     }
 
-    cameraMove(p_e) {
+    cameraMove(key) {
         var eyePos = this.eyePos;
         var atPos = this.atPos;
         var upPos = this.upPos;
@@ -3004,15 +3004,15 @@ class Camera {
         var move = scale(this.speed,atDir);
         var sideMove = scale(this.speed,sideDir);
 
-        if (p_e.getKey() == 'w') {
+        if (key == 'w') {
             var newEyePos = add(eyePos, move);
             var newAtPos = add(atPos, move);
         }
-        else if (p_e.getKey() == 's'){
+        else if (key == 's'){
             var newEyePos = subtract(eyePos, move);
             var newAtPos = subtract(atPos, move);
         }
-        else if(p_e.getKey() == 'a') {
+        else if(key == 'a') {
             var newEyePos = add(eyePos, sideMove);
             var newAtPos = add(atPos, sideMove);
         }
@@ -3030,7 +3030,7 @@ class Camera {
         return this.atPos;
     }
 
-    cameraRotate(p_e){
+    cameraRotate(key){
         var eyePos = this.eyePos;
         var atPos = this.atPos;
         var upPos = this.upPos;
@@ -3039,7 +3039,7 @@ class Camera {
         var atDir = normalize(subtract(atPos,eyePos));
         var upDir = normalize(upPos);
 
-        if(p_e.getKey() == 'q') {
+        if(key == 'q') {
             var sideDir = normalize(cross(upDir,atDir));
         }
         else {
@@ -3071,7 +3071,7 @@ class MazeWall extends BackObject {
 }
 
 class MazeRoom  extends MazeWall {
-    constructor(center, type = 1, num = 1, color = "gray") {
+    constructor(center, type = 1, color = "gray") {
         var scal = 5;
         super(center,
             vec3(0.0,0.0,0.0),
@@ -3081,205 +3081,128 @@ class MazeRoom  extends MazeWall {
             0,
             vec3(scal,0.2,scal));
 
-        var haveLeftWall = false;
-        var haveRightWall = false;
-        var haveTopWall = false;
-        var haveBottomWall = false;
+        var wallList = type.split("").map(Number);
+        var haveWalls = [];
+        var haveSpikes = [];
 
-        switch (type) {
-            // default = 1. open : no wall
-
-            // 2. single wall
-            case 2:
-                switch (num) {
-                    // 2.1 single wall 1 : left
-                    case 1:
-                        haveLeftWall = true;
-                        break;
-                    // 2.2 single wall 2 : right
-                    case 2:
-                        haveRightWall = true;
-                        break;
-                    // 2.3 single wall 3 : top
-                    case 3:
-                        haveTopWall = true;
-                        break;
-                    // 2.4 single wall 4 : bottom
-                    case 4:
-                        haveBottomWall = true;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            // 3. passage
-            case 3:
-                switch (num) {
-                    // 3.1 passage 1 : left + right
-                    case 1:
-                        haveLeftWall = true;
-                        haveRightWall = true;
-                        break;
-                    // 3.2 passage 2 : top + bottom
-                    case 2:
-                        haveTopWall = true;
-                        haveBottomWall = true;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            // 4. corner
-            case 4:
-                switch (num) {
-                    // 4.1 corner 1 : left + top
-                    case 1:
-                        haveLeftWall = true;
-                        haveTopWall = true;
-                        break;
-                    // 4.2 corner 2 : left + bottom
-                    case 2:
-                        haveLeftWall = true;
-                        haveBottomWall = true;
-                        break;
-                    // 4.3 corner 3 : right + top
-                    case 3:
-                        haveRightWall = true;
-                        haveTopWall = true;
-                        break;
-                    // 4.4 corner 4 : right + bottom
-                    case 4:
-                        haveRightWall = true;
-                        haveBottomWall = true;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            // 5. dead end
-            case 5:
-                switch (num) {
-                    // 5.1 dead end 1 : left + right + top
-                    case 1:
-                        haveLeftWall = true;
-                        haveRightWall = true;
-                        haveTopWall = true;
-                        break;
-                    // 5.2 dead end 2 : left + right + bottom
-                    case 2:
-                        haveLeftWall = true;
-                        haveRightWall = true;
-                        haveBottomWall = true;
-                        break;
-                    // 5.3 dead end 3 : left + top + bottom
-                    case 3:
-                        haveLeftWall = true;
-                        haveTopWall = true;
-                        haveBottomWall = true;
-                        break;
-                    // 5.4 dead end 4 : right + top + bottom
-                    case 4:
-                        haveRightWall = true;
-                        haveTopWall = true;
-                        haveBottomWall = true;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            // 6. close : all side walls
-            case 6:
-                haveLeftWall = true;
-                haveRightWall = true;
-                haveTopWall = true;
-                haveBottomWall = true;
-                break;
-            default:
-                break;
+        for(var i = 0; i < 4; i++) {
+            switch (wallList[i]) {
+                case 1:
+                    haveWalls.push(true);
+                    haveSpikes.push(false);
+                    break;
+                case 2:
+                    haveWalls.push(true);
+                    haveSpikes.push(true);
+                    break;
+                default:
+                    haveWalls.push(false);
+                    haveSpikes.push(false);
+                    break;
+            }
         }
 
-        if(haveLeftWall) {
-            var pos = add(center, vec3(scal/2,scal/2,0));
+        if(haveWalls[0]) {
+            var lwpos = add(center, vec3(scal/2,scal/2,0));
             var leftWall = new MazeWall(
-                pos,
+                lwpos,
                 vec3(0.0,0.0,0.0),
                 0,
                 utility.cube(),
                 utility.color(color),
                 0,
                 vec3(0.2,scal,scal));
-            this.addHierarchy(leftWall);
+
+            if(haveSpikes[0]) {
+                var LSpike1 = new MazeSpike(add(center, vec3(scal/4,0.6,-scal/4)),scal/5);
+                var LSpike2 = new MazeSpike(add(center, vec3(scal/4,0.6,0)),scal/5);
+                var LSpike3 = new MazeSpike(add(center, vec3(scal/4,0.6,scal/4)),scal/5);
+            }
         }
 
-        if(haveRightWall) {
-            var pos = add(center, vec3(-scal/2,scal/2,0));
+        if(haveWalls[1]) {
+            var rwpos = add(center, vec3(-scal/2,scal/2,0));
             var rightWall = new MazeWall(
-                pos,
+                rwpos,
                 vec3(0.0,0.0,0.0),
                 0,
                 utility.cube(),
                 utility.color(color),
                 0,
                 vec3(0.2,scal,scal));
-            this.addHierarchy(rightWall);
+
+            if(haveSpikes[1]) {
+                var RSpike1 = new MazeSpike(add(center, vec3(-scal/4,0.6,-scal/4)),scal/5);
+                var RSpike2 = new MazeSpike(add(center, vec3(-scal/4,0.6,0)),scal/5);
+                var RSpike3 = new MazeSpike(add(center, vec3(-scal/4,0.6,scal/4)),scal/5);
+            }
         }
 
-        if(haveTopWall) {
-            var pos = add(center, vec3(0,scal/2,scal/2));
+        if(haveWalls[2]) {
+            var twpos = add(center, vec3(0,scal/2,scal/2));
             var topWall = new MazeWall(
-                pos,
+                twpos,
                 vec3(0.0,0.0,0.0),
                 0,
                 utility.cube(),
                 utility.color(color),
                 0,
                 vec3(scal,scal,0.2));
-            this.addHierarchy(topWall);
+
+            if(haveSpikes[2]) {
+                var TSpike1 = new MazeSpike(add(center, vec3(-scal/4,0.6,scal/4)),scal/5);
+                var TSpike2 = new MazeSpike(add(center, vec3(0,0.6,scal/4)),scal/5);
+                var TSpike3 = new MazeSpike(add(center, vec3(scal/4,0.6,scal/4)),scal/5);
+            }
         }
 
-        if(haveBottomWall) {
-            var pos = add(center, vec3(0,scal/2,-scal/2));
+        if(haveWalls[3]) {
+            var bwpos = add(center, vec3(0,scal/2,-scal/2));
             var bottomWall = new MazeWall(
-                pos,
+                bwpos,
                 vec3(0.0,0.0,0.0),
                 0,
                 utility.cube(),
                 utility.color(color),
                 0,
                 vec3(scal,scal,0.2));
-            this.addHierarchy(bottomWall);
+
+            if(haveSpikes[3]) {
+                var BSpike1 = new MazeSpike(add(center, vec3(-scal/4,0.6,-scal/4)),scal/5);
+                var BSpike2 = new MazeSpike(add(center, vec3(0,0.6,-scal/4)),scal/5);
+                var BSpike3 = new MazeSpike(add(center, vec3(scal/4,0.6,-scal/4)),scal/5);
+            }
         }
 
     }
 
 }
 
-class MazeSpike extends BackObject
-{
+class MazeSpike extends BackObject {
+    constructor(pos, scale) {
+        super(pos,
+            vec3(0.0,0.0,0.0),
+            0,
+            utility.pyramid(4),
+            utility.color("red"),
+            0,
+            vec3(scale,scale,scale));
+
+        this.m_type = "Maze Spike";
+    }
+}
+
+class MazeExit extends BackObject {
     constructor(pos) {
         super(pos,
             vec3(0.0,0.0,0.0),
             0,
-            utility.cone(),
-            utility.color("red"),
+            utility.cube(),
+            utility.color("yellow"),
             0,
             vec3(1.0,1.0,1.0));
 
-        this.m_type = "Maze Spike";
-    }
-
-    eventHandler(p_e) {
-        if(p_e.getObject1().getType() == "Player") {
-            var ev_h = new EventHit();
-            WM.onEvent(ev_h);
-        }
-    }
-}
-
-class EventHit extends GameEvent {
-    constructor() {
-        super();
-        this.setType("Hit Event");
+        this.m_type = "Maze Exit";
     }
 }
 
@@ -3298,13 +3221,14 @@ class Player extends GameObject {
         this.setModel(model);
         this.setBox(utility.unitBox());
 
-        var camera_pos = add(pos,vec3(-2,0.5,0));
+        var camera_pos = add(pos,vec3(0,0.5,-2));
         this.camera = new Camera(camera_pos);
 
         this.m_type = "Player";
+
         this.health = 10;
         this.hit_cooldown = 0;
-        this.hit_ini_cooldown = 100;
+        this.hit_ini_cooldown = 10;
 
         this.healthStatus = new TextObject();
         this.healthStatus.setX(10);
@@ -3314,38 +3238,73 @@ class Player extends GameObject {
     }
 
     updateHealthDisplay() {
-        var healthText = "HEALTH ";
+        var healthText = "HEALTH ||";
         for (var i = 0; i < this.health; i++) {
-            healthText += "[+]";
+            healthText += " [+] ";
         }
+        healthText += " ||";
         this.healthStatus.setText(healthText);
+    }
+
+    draw() {
+        if(this.hit_cooldown % 2 == 0)
+            super.draw();
     }
 
     eventHandler(p_e) {
 
-        if(p_e.getType() == "Hit Event" && this.hit_cooldown == 0) {
+        if(p_e.getType() == EventType.COLLISION && this.hit_cooldown == 0) {
 
-            this.health--;
-            this.hit_cooldown = this.hit_ini_cooldown;
-            return 1;
+            if(p_e.getObject1() == this) {
+                var other = p_e.getObject2();
+            }
+            else {
+                var other = p_e.getObject1();
+            }
+
+            if(other.getType() == "Maze Spike") {
+
+                this.health--;
+                this.hit_cooldown = this.hit_ini_cooldown;
+                this.updateHealthDisplay();
+
+                this.m_solidness = Solidness.SOFT;
+
+                if(this.health == 0) {
+                    GameOver();
+                }
+
+                return 1;
+            }
+
+            if(other.getType() == "Maze Exit") {
+                GameWin();
+                return 1;
+            }
         }
 
         if(p_e.getType() == EventType.STEP) {
-            this.hit_cooldown--;
+            if(this.hit_cooldown > 0) {
+                this.hit_cooldown--;
+            }
+
+            if(this.hit_cooldown == 0) {
+                this.m_solidness = Solidness.HARD;
+            }
         }
 
         if (p_e.getType() == EventType.KEYBOARD) {
             if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
                 if (p_e.getKey() == 'p') {
-                    LM.writeLog(p_e.getKey() + " key detect, end game");
-                    GM.setGameOver(true);
+                    GameOver();
                     return 1;
                 }
 
                 if (p_e.getKey() == 'w' || p_e.getKey() == 's'
                     || p_e.getKey() == 'a' || p_e.getKey() == 'd') {
+                    this.last_key = p_e.getKey();
 
-                    var cameraPos = this.camera.cameraMove(p_e);
+                    var cameraPos = this.camera.cameraMove(p_e.getKey());
                     var newPos = add(cameraPos,vec3(0,-0.5,0));
 
                     this.setInitialPosition(newPos);
@@ -3355,7 +3314,7 @@ class Player extends GameObject {
 
                 if (p_e.getKey() == 'q' || p_e.getKey() == 'e') {
 
-                    this.camera.cameraRotate(p_e);
+                    this.camera.cameraRotate(p_e.getKey());
                     return 1;
                 }
             }
@@ -3369,59 +3328,14 @@ function setup() {
 
     var player = new Player(vec3(0.0, 0.0, 0.0));
 
-    var exit = new BackObject(
-        vec3(0.0,0.0,-10.0),
-        vec3(0.0,0.0,0.0),
-        0,
-        utility.cube(),
-        utility.color("yellow"),
-        0,
-        vec3(1.0,1.0,1.0));
+    var exit = new MazeExit(vec3(5.0,0.0,-5.0));
 
     var mazeList = [
-        [[4,1],[2,3],[4,3]],
-        [[5,2],[4,4],[2,2]],
-        [[4,2],[1,1],[4,4]]
+        ["2010","0010","0210"],
+        ["1101","0101","0200"],
+        ["1001","0001","0102"]
     ];
     mazeSetup(mazeList,mazeList.length);
-}
-
-function testObjSetup() {
-    var test1 = new BackObject(
-        vec3(1.0,0.0,3.0),
-        vec3(0.0,0.0,0.0),
-        0,
-        utility.cube(),
-        utility.color("red"),
-        0,
-        vec3(1.0,1.0,1.0));
-
-    var test2 = new BackObject(
-        vec3(-1.0,0.0,4.0),
-        vec3(0.0,0.0,0.0),
-        0,
-        utility.cube(),
-        utility.color("blue"),
-        0,
-        vec3(1.0,1.0,1.0));
-
-    var test3 = new BackObject(
-        vec3(2.0,0.0,-2.0),
-        vec3(0.0,0.0,0.0),
-        0,
-        utility.cube(),
-        utility.color("yellow"),
-        0,
-        vec3(1.0,1.0,1.0));
-
-    var test4 = new BackObject(
-        vec3(-2.0,0.0,-2.0),
-        vec3(0.0,0.0,0.0),
-        0,
-        utility.cube(),
-        utility.color("green"),
-        0,
-        vec3(1.0,1.0,1.0));
 }
 
 function mazeSetup(mazeList, dim) {
@@ -3432,7 +3346,31 @@ function mazeSetup(mazeList, dim) {
     for (var j = 0; j < dim ; j ++) {
         for (var i = 0; i < dim ; i ++) {
             var center = vec3(startX-i*offset,startY,startZ-j*offset);
-            new MazeRoom(center,mazeList[j][i][0],mazeList[j][i][1]);
+            new MazeRoom(center,mazeList[j][i]);
         }
     }
+}
+
+function GameWin() {
+
+    var congrat = new TextObject();
+    congrat.setX(130);
+    congrat.setY(200);
+
+    var congratText = "Congratulation ! ! !";
+    congrat.setText(congratText);
+
+    GM.setGameOver(true);
+}
+
+function GameOver() {
+
+    var over = new TextObject();
+    over.setX(140);
+    over.setY(200);
+
+    var overText = "Game Over . . . . .";
+    over.setText(overText);
+
+    GM.setGameOver(true);
 }

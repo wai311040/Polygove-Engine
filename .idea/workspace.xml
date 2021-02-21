@@ -84,7 +84,7 @@
       <workItem from="1605551953070" duration="90014000" />
       <workItem from="1612787272727" duration="122000" />
       <workItem from="1612787425014" duration="70000" />
-      <workItem from="1612787552886" duration="27036000" />
+      <workItem from="1612787552886" duration="35950000" />
     </task>
     <task id="LOCAL-00001" summary="Update collision">
       <created>1605831266387</created>
@@ -142,7 +142,14 @@
       <option name="project" value="LOCAL" />
       <updated>1612798526771</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Game Develop: add player model and health status">
+      <created>1613714047997</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1613714047997</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -195,6 +202,7 @@
     <MESSAGE value="Add Text object and Sound" />
     <MESSAGE value="Game Develop: movable camera" />
     <MESSAGE value="Game Develop: update movable camera" />
-    <option name="LAST_COMMIT_MESSAGE" value="Game Develop: update movable camera" />
+    <MESSAGE value="Game Develop: add player model and health status" />
+    <option name="LAST_COMMIT_MESSAGE" value="Game Develop: add player model and health status" />
   </component>
 </project>
