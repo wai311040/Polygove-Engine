@@ -124,6 +124,13 @@ class GameManager extends Manager {
         adjust_time = 0;
         var game_loop_count = 0;
 
+        var average_fps = 0;
+        var weight = 1/10;
+
+        this.fpsStatus = new TextObject();
+        this.fpsStatus.setX(10);
+        this.fpsStatus.setY(10);
+
         for (;!this.getGameOver();) {
             clock.delta();
 
@@ -150,6 +157,21 @@ class GameManager extends Manager {
             game_loop_count++;
 
             loop_time = clock.split() / 1000;
+
+            if (loop_time == 0) {
+                var fps = average_fps;
+            }
+            else if(loop_time > this.frame_time) {
+                var fps = 1000 / loop_time;
+            }
+            else {
+                var fps = 1000 / this.frame_time;
+            }
+            average_fps = (average_fps * weight) + (fps * (1 - weight));
+            var text = average_fps.toFixed(2) + " " + loop_time + " " + game_loop_count;
+            this.fpsStatus.setText(text);
+            LM.writeLog(text);
+
             intended_sleep_time = this.getFrameTime() - loop_time - adjust_time;
             clock.delta();
             if (intended_sleep_time > 0)
@@ -2069,7 +2091,8 @@ async function main() {
         return false;
     }
 
-    setup();
+    //setup();
+    psetup1();
 
     await GM.run();
 
@@ -3074,6 +3097,7 @@ class MazeWall extends BackObject {
         super(pos, velo, rot, shape, color, angle, scale);
 
         this.m_type = "Maze Wall";
+        this.m_solidness = Solidness.SOFT;
     }
 
     eventHandler(p_e) {
@@ -3386,4 +3410,109 @@ function GameOver() {
     over.setText(overText);
 
     GM.setGameOver(true);
+}
+
+
+// ----------------------Performance Test Part ----------------------------
+class TestCamera2 extends GameObject {
+    constructor(velo) {
+        super();
+        this.m_type = "Test Camera";
+        this.setSolidness(Solidness.SPECTRAL);
+        this.setPosition(eye);
+
+        WM.setEyeFollowing(this);
+
+        if (velo != vec3(0.0, 0.0, 0.0)){
+            this.setVelocity(velo);
+        }
+
+        this.draw_shape = false;
+        this.draw_box = false;
+        var model = new Model();
+        model.setShape(utility.cube());
+        model.setColor(utility.color("gray"));
+        this.setBox(utility.unitBox());
+        this.setModel(model);
+    }
+
+    eventHandler(p_e) {
+        if (p_e.getType() == EventType.KEYBOARD) {
+            if (p_e.getKeyboardAction() == EventKeyboardAction.KEY_PRESS) {
+                if (p_e.getKey() == 'q') {
+                    LM.writeLog("testEventKeyboard: " + p_e.getKey() + " key detect");
+                    GM.setGameOver(true);
+                    return 1;
+                }
+
+            }
+        }
+
+        if (p_e.getType() == EventType.STEP) {
+            if (p_e.getStepCount() % 200 == 0 && this.getSpeed() != 0) {
+                LM.writeLog("testObject Rendering: Step " + p_e.getStepCount() + ", reverse direction");
+                this.setDirection(scale(-1,this.getDirection()));
+                return 1;
+            }
+        }
+    }
+
+    draw() {
+
+    }
+}
+
+class ObjectForTest2 extends GameObject {
+    constructor(pos, velo, rot, shape, color, angle, scale) {
+        super();
+        this.m_type = "Test Object";
+
+        this.toggle_event_step = false;
+        this.toggle_event_collision = true;
+
+        this.collision_cooldown = 10;
+        this.collision_count = 0;
+
+        this.draw_box = false;
+
+        this.setInitialPosition(pos);
+        this.setVelocity(velo);
+        this.setRotateSpeed(rot);
+        var model = new Model();
+        model.setShape(shape);
+        model.setColor(color);
+        model.setRotateAngle(angle);
+        model.setScale(scale);
+        this.setModel(model);
+        this.setBox(utility.unitBox());
+    }
+
+    eventHandler(p_e) {
+        if (p_e.getType() == EventType.STEP) {
+            if (p_e.getStepCount() % 200 == 0) {
+                LM.writeLog("testObject Rendering: Step " + p_e.getStepCount() + ", reverse direction");
+                this.setDirection(scale(-1,this.getDirection()));
+            }
+        }
+    }
+}
+
+function psetup1(){
+    var camera = new TestCamera2(vec3(0.0,0.0,-0.0));
+
+    var n = 5;
+    for(var i = 0; i < n; i++) {
+        for(var j = 0; j < n; j++) {
+            for(var k = 0; k < n; k++) {
+                new ObjectForTest2(
+                    vec3(2*i+1 - n,2*j+1 - n,- 2*k - 3),
+                    vec3(0.0,0.0,0.0),
+                    0,
+                    utility.cube(),
+                    utility.color("gray"),
+                    0,
+                    vec3(1.0,1.0,1.0));
+            }
+        }
+    }
 }
