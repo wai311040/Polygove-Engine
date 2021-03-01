@@ -2091,8 +2091,8 @@ async function main() {
         return false;
     }
 
-    //setup();
-    psetup1();
+    setup();
+    //psetup1();
 
     await GM.run();
 
